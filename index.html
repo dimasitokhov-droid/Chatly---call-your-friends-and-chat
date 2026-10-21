@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chatly — онлайн-чат</title>
+  <title>Chatly — твой мессенджер</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -14,160 +14,307 @@
       color: #24233a;
     }
     header {
-      padding: 22px;
-      color: white;
       background: #6757e8;
+      color: white;
+      padding: 22px;
     }
     header h1 { margin: 0 0 6px; }
-    main {
-      max-width: 620px;
-      margin: auto;
-      padding: 16px;
-    }
-    #status { color: #686779; font-size: 14px; }
-    #messages {
-      height: 55vh;
-      min-height: 260px;
-      overflow-y: auto;
-      padding: 14px;
+    main { max-width: 620px; margin: auto; padding: 18px; }
+    .card {
       background: white;
-      border-radius: 16px;
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 15px #25204b0c;
     }
-    .message {
-      margin: 8px 0;
-      padding: 10px 12px;
-      border-radius: 12px;
-      background: #eeeaff;
-      overflow-wrap: anywhere;
-    }
-    .mine { background: #ded8ff; }
-    .meta { font-size: 11px; color: #696580; margin-bottom: 5px; }
-    form { display: flex; gap: 8px; margin-top: 12px; }
+    h2 { margin-top: 0; }
     input {
-      min-width: 0;
-      flex: 1;
+      display: block;
+      width: 100%;
       padding: 13px;
-      border: 1px solid #d4d1e5;
-      border-radius: 12px;
+      margin: 10px 0;
+      border: 1px solid #d9d6eb;
+      border-radius: 11px;
       font-size: 16px;
     }
     button {
-      border: 0;
       padding: 12px 16px;
-      border-radius: 12px;
+      border: 0;
+      border-radius: 11px;
       background: #6757e8;
       color: white;
-      font-size: 16px;
+      font-size: 15px;
+      cursor: pointer;
     }
     button:disabled { opacity: .5; }
+    .secondary { background: #e9e6ff; color: #5142c5; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    #messages {
+      height: 42vh;
+      min-height: 230px;
+      overflow-y: auto;
+      background: #faf9ff;
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .message {
+      background: #eae6ff;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 12px;
+      overflow-wrap: anywhere;
+    }
+    .meta { font-size: 12px; color: #696580; margin-bottom: 5px; }
+    .composer { display: flex; gap: 8px; margin-top: 10px; }
+    .composer input { flex: 1; min-width: 0; }
+    .hint { color: #747187; font-size: 13px; }
+    #status { overflow-wrap: anywhere; }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>💬 Chatly</h1>
-    <div>Общая онлайн-комната</div>
-  </header>
+<header>
+  <h1>💬 Chatly</h1>
+  <div>Общайся без границ</div>
+</header>
 
-  <main>
-    <p id="status">Подключаемся...</p>
-    <div id="messages" aria-live="polite"></div>
-    <form id="form">
-      <input id="text" maxlength="500"
-        placeholder="Напиши сообщение..."
-        autocomplete="off" required>
-      <button id="send" disabled>➤</button>
+<main>
+  <p id="status" role="status">Подключаемся к Chatly...</p>
+
+  <section id="auth" class="card" hidden>
+    <h2 id="authTitle">Добро пожаловать!</h2>
+    <p id="authHint">Войди или создай аккаунт.</p>
+    <form id="authForm">
+      <input id="email" type="email" placeholder="Email"
+        autocomplete="email" maxlength="254" required>
+      <input id="password" type="password" placeholder="Пароль"
+        autocomplete="current-password" minlength="6"
+        maxlength="128" required>
+      <div class="actions">
+        <button id="submitAuth" type="submit">Войти</button>
+        <button id="toggleAuth" class="secondary" type="button">
+          Создать аккаунт
+        </button>
+      </div>
     </form>
-    <p><small>Тестовая общая комната. Не отправляй личные данные.</small></p>
-  </main>
+    <p class="hint">
+      Используй свой email и придумай надёжный пароль.
+    </p>
+  </section>
 
-  <script type="module">
-    import { initializeApp } from
-      "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-    import {
-      getAuth, signInAnonymously
-    } from
-      "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-    import {
-      getFirestore, collection, addDoc, query,
-      orderBy, limit, onSnapshot, serverTimestamp
-    } from
-      "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+  <section id="profile" class="card" hidden>
+    <h2>Твой аккаунт</h2>
+    <p id="userEmail"></p>
+    <button id="logout" class="secondary">Выйти</button>
+  </section>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
-      authDomain: "chatly-19613.firebaseapp.com",
-      projectId: "chatly-19613",
-      storageBucket: "chatly-19613.firebasestorage.app",
-      messagingSenderId: "1080401916394",
-      appId: "1:1080401916394:web:815e66c78ced380b4c8293",
-      measurementId: "G-WJ2NPP9T45"
+  <section id="chat" class="card" hidden>
+    <h2>🌍 Общая комната</h2>
+    <div id="messages" aria-live="polite"></div>
+    <form id="messageForm" class="composer">
+      <input id="messageText" placeholder="Напиши сообщение..."
+        maxlength="500" autocomplete="off" required>
+      <button id="send" type="submit">➤</button>
+    </form>
+    <p class="hint">
+      Общая комната: другие вошедшие пользователи могут читать сообщения.
+      Не отправляй личные данные.
+    </p>
+  </section>
+</main>
+
+<script type="module">
+  import { initializeApp } from
+    "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+  import {
+    getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
+    signInWithEmailAndPassword, signOut
+  } from
+    "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+  import {
+    getFirestore, collection, addDoc, query, orderBy, limit,
+    onSnapshot, serverTimestamp
+  } from
+    "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
+    authDomain: "chatly-19613.firebaseapp.com",
+    projectId: "chatly-19613",
+    storageBucket: "chatly-19613.firebasestorage.app",
+    messagingSenderId: "1080401916394",
+    appId: "1:1080401916394:web:815e66c78ced380b4c8293",
+    measurementId: "G-WJ2NPP9T45"
+  };
+
+  const $ = id => document.getElementById(id);
+  const status = $("status");
+  let isRegistering = false;
+  let stopMessages = null;
+  let currentUser = null;
+  let busy = false;
+
+  function showError(error) {
+    const messages = {
+      "auth/email-already-in-use": "Этот email уже зарегистрирован. Попробуй войти.",
+      "auth/invalid-email": "Проверь правильность email.",
+      "auth/weak-password": "Пароль слишком простой. Используй не менее 6 символов.",
+      "auth/invalid-credential": "Неверный email или пароль.",
+      "auth/network-request-failed": "Проблема с интернетом. Попробуй ещё раз.",
+      "auth/too-many-requests": "Слишком много попыток. Попробуй позже.",
+      "auth/operation-not-allowed": "Включи Email/Password в Firebase Authentication.",
+      "permission-denied": "Firebase запретил доступ. Проверь правила Firestore."
     };
+    status.textContent =
+      messages[error.code] ||
+      messages[error.code?.split("/").pop()] ||
+      "Ошибка: " + (error.message || "попробуй ещё раз");
+  }
 
-    const status = document.getElementById("status");
-    const messages = document.getElementById("messages");
-    const input = document.getElementById("text");
-    const send = document.getElementById("send");
-    const form = document.getElementById("form");
+  function updateAuthMode() {
+    $("authTitle").textContent = isRegistering
+      ? "Создай аккаунт 💜" : "С возвращением!";
+    $("authHint").textContent = isRegistering
+      ? "Зарегистрируйся с помощью email и пароля."
+      : "Войди в свой аккаунт Chatly.";
+    $("submitAuth").textContent = isRegistering
+      ? "Зарегистрироваться" : "Войти";
+    $("toggleAuth").textContent = isRegistering
+      ? "У меня уже есть аккаунт" : "Создать аккаунт";
+    $("password").autocomplete = isRegistering
+      ? "new-password" : "current-password";
+  }
 
-    try {
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const db = getFirestore(app);
+  $("toggleAuth").addEventListener("click", () => {
+    isRegistering = !isRegistering;
+    updateAuthMode();
+    status.textContent = "";
+  });
 
-      await signInAnonymously(auth);
-      const user = auth.currentUser;
-      const messagesRef = collection(db, "rooms", "general", "messages");
-      const recentMessages = query(
-        messagesRef, orderBy("createdAt", "desc"), limit(100)
-      );
+  try {
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const messagesRef = collection(db, "rooms", "general", "messages");
+    const recentMessages = query(
+      messagesRef, orderBy("createdAt", "desc"), limit(100)
+    );
 
-      onSnapshot(recentMessages, snapshot => {
-        messages.replaceChildren();
+    $("authForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      if (busy) return;
+      busy = true;
+      $("submitAuth").disabled = true;
+      status.textContent = isRegistering
+        ? "Создаём аккаунт..." : "Входим...";
+
+      try {
+        const email = $("email").value.trim();
+        const password = $("password").value;
+
+        if (isRegistering) {
+          await createUserWithEmailAndPassword(auth, email, password);
+          status.textContent = "Аккаунт создан!";
+        } else {
+          await signInWithEmailAndPassword(auth, email, password);
+          status.textContent = "Ты вошёл в Chatly!";
+        }
+      } catch (error) {
+        showError(error);
+      } finally {
+        busy = false;
+        $("submitAuth").disabled = false;
+      }
+    });
+
+    $("logout").addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+        status.textContent = "Ты вышел из аккаунта.";
+      } catch (error) {
+        showError(error);
+      }
+    });
+
+    onAuthStateChanged(auth, user => {
+      currentUser = user;
+      if (stopMessages) {
+        stopMessages();
+        stopMessages = null;
+      }
+
+      $("auth").hidden = !!user;
+      $("profile").hidden = !user;
+      $("chat").hidden = !user;
+
+      if (!user) {
+        $("userEmail").textContent = "";
+        $("messages").replaceChildren();
+        $("send").disabled = true;
+        status.textContent = "Войди или создай аккаунт.";
+        return;
+      }
+
+      $("userEmail").textContent = user.email || "Email не указан";
+      status.textContent = "Подключаем общую комнату...";
+
+      stopMessages = onSnapshot(recentMessages, snapshot => {
+        if (currentUser?.uid !== user.uid) return;
+        const fragment = document.createDocumentFragment();
+
         [...snapshot.docs].reverse().forEach(doc => {
           const data = doc.data();
           const bubble = document.createElement("div");
-          bubble.className = "message" +
-            (data.uid === user.uid ? " mine" : "");
+          bubble.className = "message";
 
           const meta = document.createElement("div");
           meta.className = "meta";
-          meta.textContent = data.uid === user.uid ? "Ты" : "Участник";
+          meta.textContent = data.uid === user.uid
+            ? "Ты" : "Участник";
 
-          const body = document.createElement("div");
-          body.textContent = data.text;
-
-          bubble.append(meta, body);
-          messages.appendChild(bubble);
+          const text = document.createElement("div");
+          text.textContent = data.text || "";
+          bubble.append(meta, text);
+          fragment.appendChild(bubble);
         });
-        messages.scrollTop = messages.scrollHeight;
-        status.textContent = "Онлайн · общая комната";
-        send.disabled = false;
+
+        $("messages").replaceChildren(fragment);
+        $("messages").scrollTop = $("messages").scrollHeight;
+        status.textContent = "Chatly онлайн 💜";
+        $("send").disabled = false;
       }, error => {
-        status.textContent = "Ошибка загрузки сообщений: " + error.message;
+        showError(error);
       });
+    });
 
-      form.addEventListener("submit", async event => {
-        event.preventDefault();
-        const text = input.value.trim();
-        if (!text || text.length > 500) return;
+    $("messageForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      if (!currentUser || busy) return;
 
-        send.disabled = true;
-        try {
-          await addDoc(messagesRef, {
-            text,
-            uid: user.uid,
-            createdAt: serverTimestamp()
-          });
-          input.value = "";
-        } catch (error) {
-          status.textContent = "Не удалось отправить: " + error.message;
-        } finally {
-          send.disabled = false;
-        }
-      });
-    } catch (error) {
-      status.textContent = "Ошибка подключения: " + error.message;
-    }
-  </script>
+      const text = $("messageText").value.trim();
+      if (!text || text.length > 500) return;
+
+      busy = true;
+      $("send").disabled = true;
+      try {
+        await addDoc(messagesRef, {
+          text,
+          uid: currentUser.uid,
+          createdAt: serverTimestamp()
+        });
+        $("messageText").value = "";
+      } catch (error) {
+        showError(error);
+      } finally {
+        busy = false;
+        $("send").disabled = false;
+      }
+    });
+
+    updateAuthMode();
+  } catch (error) {
+    showError(error);
+  }
+</script>
 </body>
 </html>
