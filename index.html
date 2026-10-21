@@ -3,168 +3,170 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chatly</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chatly — онлайн-чат</title>
   <style>
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background: #f1f4f9;
-      color: #20243a;
+      background: #f1f2fa;
+      color: #24233a;
     }
     header {
-      background: #6757e8;
+      padding: 22px;
       color: white;
-      padding: 24px 20px;
-      border-radius: 0 0 24px 24px;
+      background: #6757e8;
     }
-    header h1 { margin: 0 0 8px; }
-    header p { margin: 0; opacity: .85; }
-    main { padding: 18px; max-width: 600px; margin: auto; }
-    .chat {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: white;
+    header h1 { margin: 0 0 6px; }
+    main {
+      max-width: 620px;
+      margin: auto;
       padding: 16px;
-      margin-bottom: 12px;
-      border-radius: 16px;
-      box-shadow: 0 3px 12px #20243a0b;
     }
-    .avatar {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: #e4e0ff;
-      display: grid;
-      place-items: center;
-      font-size: 24px;
-    }
-    .details { flex: 1; }
-    .details p { margin: 5px 0 0; color: #777b8d; }
-    .badge { color: #6757e8; font-size: 13px; }
+    #status { color: #686779; font-size: 14px; }
     #messages {
-      display: none;
+      height: 55vh;
+      min-height: 260px;
+      overflow-y: auto;
+      padding: 14px;
       background: white;
-      padding: 16px;
       border-radius: 16px;
-      margin-bottom: 12px;
     }
-    #history { min-height: 100px; }
-    .bubble {
-      background: #eeeaff;
-      padding: 10px 12px;
-      border-radius: 14px;
+    .message {
       margin: 8px 0;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #eeeaff;
       overflow-wrap: anywhere;
     }
-    .composer { display: flex; gap: 8px; margin-top: 12px; }
+    .mine { background: #ded8ff; }
+    .meta { font-size: 11px; color: #696580; margin-bottom: 5px; }
+    form { display: flex; gap: 8px; margin-top: 12px; }
     input {
       min-width: 0;
       flex: 1;
       padding: 13px;
-      border: 1px solid #ddd;
+      border: 1px solid #d4d1e5;
       border-radius: 12px;
       font-size: 16px;
     }
     button {
       border: 0;
-      border-radius: 12px;
       padding: 12px 16px;
+      border-radius: 12px;
       background: #6757e8;
       color: white;
       font-size: 16px;
     }
-    .back { margin-bottom: 12px; }
-    footer { text-align: center; color: #888; padding: 20px; }
+    button:disabled { opacity: .5; }
   </style>
 </head>
 <body>
   <header>
     <h1>💬 Chatly</h1>
-    <p>Call your friends and chat</p>
+    <div>Общая онлайн-комната</div>
   </header>
 
   <main>
-    <section id="list">
-      <h2>Твои чаты</h2>
-      <div class="chat" onclick="openChat('Алекс')">
-        <div class="avatar">😎</div>
-        <div class="details">
-          <strong>Алекс</strong>
-          <p>Привет! Как дела?</p>
-        </div>
-        <span class="badge">Чат</span>
-      </div>
-      <div class="chat" onclick="openChat('Маша')">
-        <div class="avatar">😊</div>
-        <div class="details">
-          <strong>Маша</strong>
-          <p>Увидимся сегодня!</p>
-        </div>
-        <span class="badge">Чат</span>
-      </div>
-      <div class="chat" onclick="openChat('Даня')">
-        <div class="avatar">🎮</div>
-        <div class="details">
-          <strong>Даня</strong>
-          <p>Пойдём играть?</p>
-        </div>
-        <span class="badge">Чат</span>
-      </div>
-    </section>
-
-    <section id="messages">
-      <button class="back" onclick="closeChat()">← Назад</button>
-      <h2 id="chatTitle">Чат</h2>
-      <div id="history"></div>
-      <form class="composer" onsubmit="sendMessage(event)">
-        <input id="messageInput" placeholder="Напиши сообщение..." autocomplete="off" required>
-        <button type="submit">➤</button>
-      </form>
-    </section>
+    <p id="status">Подключаемся...</p>
+    <div id="messages" aria-live="polite"></div>
+    <form id="form">
+      <input id="text" maxlength="500"
+        placeholder="Напиши сообщение..."
+        autocomplete="off" required>
+      <button id="send" disabled>➤</button>
+    </form>
+    <p><small>Тестовая общая комната. Не отправляй личные данные.</small></p>
   </main>
 
-  <footer>Chatly · Твоя территория общения 💜</footer>
+  <script type="module">
+    import { initializeApp } from
+      "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import {
+      getAuth, signInAnonymously
+    } from
+      "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import {
+      getFirestore, collection, addDoc, query,
+      orderBy, limit, onSnapshot, serverTimestamp
+    } from
+      "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
-  <script>
-    let currentChat = '';
-    const conversations = {};
+    const firebaseConfig = {
+      apiKey: "AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
+      authDomain: "chatly-19613.firebaseapp.com",
+      projectId: "chatly-19613",
+      storageBucket: "chatly-19613.firebasestorage.app",
+      messagingSenderId: "1080401916394",
+      appId: "1:1080401916394:web:815e66c78ced380b4c8293",
+      measurementId: "G-WJ2NPP9T45"
+    };
 
-    function openChat(name) {
-      currentChat = name;
-      document.getElementById('list').style.display = 'none';
-      document.getElementById('messages').style.display = 'block';
-      document.getElementById('chatTitle').textContent = name;
-      renderMessages();
-    }
+    const status = document.getElementById("status");
+    const messages = document.getElementById("messages");
+    const input = document.getElementById("text");
+    const send = document.getElementById("send");
+    const form = document.getElementById("form");
 
-    function closeChat() {
-      document.getElementById('messages').style.display = 'none';
-      document.getElementById('list').style.display = 'block';
-    }
+    try {
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
 
-    function sendMessage(event) {
-      event.preventDefault();
-      const input = document.getElementById('messageInput');
-      const message = input.value.trim();
-      if (!message) return;
-      conversations[currentChat] ||= [];
-      conversations[currentChat].push(message);
-      input.value = '';
-      renderMessages();
-    }
+      await signInAnonymously(auth);
+      const user = auth.currentUser;
+      const messagesRef = collection(db, "rooms", "general", "messages");
+      const recentMessages = query(
+        messagesRef, orderBy("createdAt", "desc"), limit(100)
+      );
 
-    function renderMessages() {
-      const history = document.getElementById('history');
-      history.replaceChildren();
-      (conversations[currentChat] || []).forEach(message => {
-        const bubble = document.createElement('div');
-        bubble.className = 'bubble';
-        bubble.textContent = message;
-        history.appendChild(bubble);
+      onSnapshot(recentMessages, snapshot => {
+        messages.replaceChildren();
+        [...snapshot.docs].reverse().forEach(doc => {
+          const data = doc.data();
+          const bubble = document.createElement("div");
+          bubble.className = "message" +
+            (data.uid === user.uid ? " mine" : "");
+
+          const meta = document.createElement("div");
+          meta.className = "meta";
+          meta.textContent = data.uid === user.uid ? "Ты" : "Участник";
+
+          const body = document.createElement("div");
+          body.textContent = data.text;
+
+          bubble.append(meta, body);
+          messages.appendChild(bubble);
+        });
+        messages.scrollTop = messages.scrollHeight;
+        status.textContent = "Онлайн · общая комната";
+        send.disabled = false;
+      }, error => {
+        status.textContent = "Ошибка загрузки сообщений: " + error.message;
       });
+
+      form.addEventListener("submit", async event => {
+        event.preventDefault();
+        const text = input.value.trim();
+        if (!text || text.length > 500) return;
+
+        send.disabled = true;
+        try {
+          await addDoc(messagesRef, {
+            text,
+            uid: user.uid,
+            createdAt: serverTimestamp()
+          });
+          input.value = "";
+        } catch (error) {
+          status.textContent = "Не удалось отправить: " + error.message;
+        } finally {
+          send.disabled = false;
+        }
+      });
+    } catch (error) {
+      status.textContent = "Ошибка подключения: " + error.message;
     }
   </script>
 </body>
