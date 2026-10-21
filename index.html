@@ -2,151 +2,97 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101522">
-  <title>Chatly — общайся с друзьями</title>
+  <title>Chatly</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      min-height: 100vh;
       background: #101522;
       color: #f5f7ff;
       font-family: Arial, sans-serif;
     }
 
-    button, input {
-      font: inherit;
-    }
+    button, input { font: inherit; }
 
     button {
+      padding: 12px 15px;
+      border: 0;
+      border-radius: 10px;
+      background: #8797ff;
+      color: #101522;
+      font-weight: bold;
       cursor: pointer;
     }
 
+    button:disabled { opacity: .55; }
+
+    input {
+      width: 100%;
+      padding: 13px;
+      margin-bottom: 10px;
+      background: #101522;
+      color: white;
+      border: 1px solid #35405b;
+      border-radius: 10px;
+    }
+
     .container {
-      width: min(100% - 28px, 760px);
-      margin: 0 auto;
-      padding: 24px 0 50px;
+      width: min(100% - 24px, 720px);
+      margin: auto;
+      padding: 22px 0 50px;
     }
 
     header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       gap: 12px;
-      margin-bottom: 24px;
+      margin-bottom: 22px;
     }
 
     .logo {
       font-size: 30px;
       font-weight: 800;
-      color: #8b9cff;
-      letter-spacing: -1px;
-    }
-
-    .subtitle {
-      color: #aab3c8;
-      margin-top: 5px;
-      font-size: 14px;
+      color: #8797ff;
     }
 
     .panel {
       background: #191f30;
       border: 1px solid #2b344b;
-      border-radius: 18px;
-      padding: 20px;
-      margin-bottom: 16px;
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 15px;
     }
 
-    h2 {
-      font-size: 19px;
-      margin: 0 0 16px;
+    h2 { font-size: 19px; margin: 0 0 15px; }
+
+    .muted, .status {
+      color: #aab3c8;
+      font-size: 14px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
     }
 
-    input {
-      display: block;
-      width: 100%;
-      padding: 13px 14px;
-      background: #101522;
-      color: white;
-      border: 1px solid #35405b;
-      border-radius: 11px;
-      outline: none;
-      margin-bottom: 10px;
-    }
+    .status { margin-top: 12px; }
+    .error { color: #ff9eaa; }
+    .success { color: #8fe0b1; }
 
-    input:focus {
-      border-color: #8797ff;
-    }
+    .hidden { display: none !important; }
 
-    button {
-      border: 0;
-      border-radius: 11px;
-      padding: 12px 15px;
-      background: #8293ff;
-      color: #101522;
-      font-weight: 700;
-    }
-
-    button:disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-    }
-
-    .secondary {
-      background: #2b344b;
-      color: #f5f7ff;
-    }
-
-    .danger {
-      background: #482936;
-      color: #ffd9df;
-    }
-
-    .full {
-      width: 100%;
-    }
+    .secondary { background: #2b344b; color: white; }
+    .danger { background: #482936; color: #ffd9df; }
+    .full { width: 100%; }
 
     .row {
       display: flex;
       gap: 8px;
-      align-items: center;
     }
 
-    .row input {
-      min-width: 0;
-      margin-bottom: 0;
-      flex: 1;
-    }
-
-    .row button {
-      flex-shrink: 0;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    .muted {
-      color: #aab3c8;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    .message {
-      padding: 12px;
-      margin: 12px 0;
-      border-radius: 10px;
-      background: #222b40;
-      color: #dce2ff;
-      overflow-wrap: anywhere;
-      font-size: 14px;
-      line-height: 1.5;
-    }
+    .row input { min-width: 0; flex: 1; }
 
     .person {
       display: flex;
@@ -157,73 +103,26 @@
       border-bottom: 1px solid #2b344b;
     }
 
-    .person:last-child {
-      border-bottom: 0;
-    }
+    .person:last-child { border-bottom: 0; }
+    .person-info { min-width: 0; overflow-wrap: anywhere; }
+    .username { font-weight: bold; margin-bottom: 4px; }
 
-    .person-info {
-      min-width: 0;
-      overflow-wrap: anywhere;
-    }
-
-    .username {
-      font-weight: 700;
-    }
-
-    .person-actions {
+    .actions {
       display: flex;
       flex-wrap: wrap;
-      gap: 7px;
       justify-content: flex-end;
+      gap: 6px;
     }
 
-    .person-actions button {
+    .actions button {
       padding: 9px 11px;
       font-size: 13px;
     }
 
-    .status {
-      font-size: 14px;
-      line-height: 1.5;
-      color: #aab3c8;
-      margin-top: 12px;
-      overflow-wrap: anywhere;
-    }
-
-    .status.error {
-      color: #ff9eaa;
-    }
-
-    .status.success {
-      color: #8fe0b1;
-    }
-
     @media (max-width: 480px) {
-      .container {
-        width: min(100% - 20px, 760px);
-        padding-top: 16px;
-      }
-
-      .panel {
-        padding: 16px;
-      }
-
-      .person {
-        align-items: flex-start;
-      }
-
-      .person-actions {
-        flex-direction: column;
-      }
-
-      .row {
-        flex-wrap: wrap;
-      }
-
-      .row input,
-      .row button {
-        width: 100%;
-      }
+      .person { align-items: flex-start; }
+      .actions { flex-direction: column; }
+      .row { flex-direction: column; }
     }
   </style>
 </head>
@@ -233,43 +132,41 @@
     <header>
       <div>
         <div class="logo">Chatly</div>
-        <div class="subtitle">Общайся с друзьями</div>
+        <div class="muted">Общайся с друзьями</div>
       </div>
-      <button id="logoutButton" class="secondary hidden">
-        Выйти
-      </button>
+      <button id="logout" class="secondary hidden">Выйти</button>
     </header>
 
     <section id="authPanel" class="panel">
-      <h2 id="authTitle">Вход в Chatly</h2>
+      <h2 id="authTitle">Вход в аккаунт</h2>
 
       <form id="authForm">
         <div id="usernameField" class="hidden">
           <input
-            id="usernameInput"
+            id="username"
             type="text"
             minlength="3"
             maxlength="20"
             pattern="[a-zA-Z0-9_]{3,20}"
+            placeholder="Имя пользователя"
             autocomplete="username"
-            placeholder="Имя пользователя (3–20 символов)"
           >
         </div>
 
         <input
-          id="emailInput"
+          id="email"
           type="email"
-          autocomplete="email"
           placeholder="Электронная почта"
+          autocomplete="email"
           required
         >
 
         <input
-          id="passwordInput"
+          id="password"
           type="password"
           minlength="6"
+          placeholder="Пароль"
           autocomplete="current-password"
-          placeholder="Пароль (не менее 6 символов)"
           required
         >
 
@@ -278,10 +175,7 @@
         </button>
       </form>
 
-      <p class="muted" id="authHint">
-        Нет аккаунта? Зарегистрируйся.
-      </p>
-
+      <p id="authHint" class="muted">Нет аккаунта? Зарегистрируйся.</p>
       <button id="toggleAuth" class="secondary full">
         Создать аккаунт
       </button>
@@ -292,7 +186,7 @@
     <section id="appPanel" class="hidden">
       <section class="panel">
         <h2>Мой профиль</h2>
-        <div id="myProfile" class="muted"></div>
+        <div id="profile" class="muted">Подключение…</div>
       </section>
 
       <section class="panel">
@@ -300,15 +194,12 @@
         <form id="searchForm">
           <div class="row">
             <input
-              id="searchInput"
-              type="text"
+              id="searchUsername"
               maxlength="20"
               placeholder="Имя пользователя"
               required
             >
-            <button id="searchButton" type="submit">
-              Найти
-            </button>
+            <button id="searchButton" type="submit">Найти</button>
           </div>
         </form>
         <div id="searchStatus" class="status"></div>
@@ -317,23 +208,17 @@
 
       <section class="panel">
         <h2>Входящие заявки</h2>
-        <div id="incomingList" class="muted">
-          Загрузка заявок…
-        </div>
+        <div id="incoming" class="muted">Загрузка…</div>
       </section>
 
       <section class="panel">
         <h2>Мои заявки</h2>
-        <div id="outgoingList" class="muted">
-          Загрузка заявок…
-        </div>
+        <div id="outgoing" class="muted">Загрузка…</div>
       </section>
 
       <section class="panel">
         <h2>Мои друзья</h2>
-        <div id="contactsList" class="muted">
-          Загрузка контактов…
-        </div>
+        <div id="contacts" class="muted">Загрузка…</div>
       </section>
     </section>
   </main>
@@ -381,86 +266,86 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    const $ = (id) => document.getElementById(id);
+    const $ = id => document.getElementById(id);
 
-    let isRegistering = false;
-    let currentProfile = null;
-    let unsubscribeListeners = [];
+    let registering = false;
+    let activeUid = null;
+    let profileLoadVersion = 0;
+    let listeners = [];
     const accepting = new Set();
     const rejecting = new Set();
 
-    function setStatus(id, text, type = "") {
-      const element = $(id);
-      element.textContent = text;
-      element.className = "status" + (type ? " " + type : "");
+    function status(id, message, type = "") {
+      $(id).textContent = message;
+      $(id).className = "status" + (type ? " " + type : "");
     }
 
-    function friendlyError(error) {
-      const code = error?.code || "";
+    function errorText(error) {
       const messages = {
-        "auth/email-already-in-use": "Эта почта уже зарегистрирована.",
-        "auth/invalid-email": "Проверь адрес электронной почты.",
-        "auth/weak-password": "Пароль слишком простой.",
         "auth/invalid-credential": "Неверная почта или пароль.",
-        "auth/user-not-found": "Аккаунт не найден.",
-        "auth/wrong-password": "Неверная почта или пароль.",
+        "auth/invalid-email": "Проверь адрес электронной почты.",
+        "auth/email-already-in-use": "Эта почта уже зарегистрирована.",
+        "auth/weak-password": "Пароль должен содержать не менее 6 символов.",
         "auth/too-many-requests": "Слишком много попыток. Попробуй позже.",
-        "permission-denied": "Firestore отказал в доступе. Проверь опубликованные правила и права пользователя.",
-        "unavailable": "Firebase временно недоступен. Попробуй ещё раз."
+        "permission-denied": "Firestore отказал в доступе. Проверь правила и права пользователя.",
+        "unavailable": "Firebase временно недоступен."
       };
 
-      return (messages[code] || error?.message || "Неизвестная ошибка")
-        + (code ? " [" + code + "]" : "");
+      return (messages[error?.code] || error?.message || "Неизвестная ошибка")
+        + (error?.code ? " [" + error.code + "]" : "");
     }
 
-    function showAuthMode(registering) {
-      isRegistering = registering;
+    function stopListeners() {
+      listeners.forEach(unsubscribe => unsubscribe());
+      listeners = [];
+    }
 
-      $("authTitle").textContent = registering
+    function switchMode(value) {
+      registering = value;
+
+      $("authTitle").textContent = value
         ? "Создание аккаунта"
-        : "Вход в Chatly";
+        : "Вход в аккаунт";
 
-      $("usernameField").classList.toggle("hidden", !registering);
-      $("usernameInput").required = registering;
+      $("usernameField").classList.toggle("hidden", !value);
+      $("username").required = value;
 
-      $("passwordInput").autocomplete = registering
-        ? "new-password"
-        : "current-password";
-
-      $("authSubmit").textContent = registering
+      $("authSubmit").textContent = value
         ? "Зарегистрироваться"
         : "Войти";
 
-      $("authHint").textContent = registering
-        ? "Уже есть аккаунт? Переключись на вход."
-        : "Нет аккаунта? Зарегистрируйся.";
-
-      $("toggleAuth").textContent = registering
+      $("toggleAuth").textContent = value
         ? "У меня уже есть аккаунт"
         : "Создать аккаунт";
 
-      setStatus("authStatus", "");
+      $("authHint").textContent = value
+        ? "Уже зарегистрирован? Переключись на вход."
+        : "Нет аккаунта? Зарегистрируйся.";
+
+      status("authStatus", "");
     }
 
     $("toggleAuth").addEventListener("click", () => {
-      showAuthMode(!isRegistering);
+      switchMode(!registering);
     });
 
-    $("authForm").addEventListener("submit", async (event) => {
+    $("authForm").addEventListener("submit", async event => {
       event.preventDefault();
 
-      const email = $("emailInput").value.trim();
-      const password = $("passwordInput").value;
-      const username = $("usernameInput").value.trim().toLowerCase();
+      const email = $("email").value.trim();
+      const password = $("password").value;
+      const username = $("username").value.trim().toLowerCase();
 
       $("authSubmit").disabled = true;
-      setStatus("authStatus", "Подожди…");
+      status("authStatus", registering
+        ? "Создаём аккаунт…"
+        : "Входим в аккаунт…");
 
       try {
-        if (isRegistering) {
+        if (registering) {
           if (!/^[a-z0-9_]{3,20}$/.test(username)) {
             throw new Error(
-              "Имя должно содержать 3–20 символов: латинские буквы, цифры или _."
+              "Имя: 3–20 латинских букв, цифр или символов _."
             );
           }
 
@@ -469,14 +354,14 @@
           );
 
           try {
-            await runTransaction(db, async (transaction) => {
-              const usernameRef = doc(db, "usernames", username);
+            await runTransaction(db, async transaction => {
+              const nameRef = doc(db, "usernames", username);
               const userRef = doc(db, "users", credential.user.uid);
 
-              const existingUsername = await transaction.get(usernameRef);
+              const existing = await transaction.get(nameRef);
 
-              if (existingUsername.exists()) {
-                throw new Error("Это имя пользователя уже занято.");
+              if (existing.exists()) {
+                throw new Error("Это имя уже занято.");
               }
 
               transaction.set(userRef, {
@@ -484,98 +369,82 @@
                 createdAt: serverTimestamp()
               });
 
-              transaction.set(usernameRef, {
+              transaction.set(nameRef, {
                 uid: credential.user.uid
               });
             });
+
+            status("authStatus", "Аккаунт создан!", "success");
           } catch (profileError) {
-            // Если создание профиля не получилось, не оставляем
-            // пользователя в частично зарегистрированном состоянии.
+            // Аккаунт Firebase уже создан. Выходим, чтобы не оставить
+            // пользователя в состоянии частичной регистрации.
             await signOut(auth);
             throw profileError;
           }
-
-          setStatus("authStatus", "Аккаунт создан!", "success");
         } else {
           await signInWithEmailAndPassword(auth, email, password);
+          status("authStatus", "Вход выполнен.", "success");
         }
       } catch (error) {
-        console.error("Ошибка авторизации:", error);
-        setStatus("authStatus", friendlyError(error), "error");
+        console.error("Ошибка входа/регистрации:", error);
+        status("authStatus", errorText(error), "error");
       } finally {
         $("authSubmit").disabled = false;
       }
     });
 
-    $("logoutButton").addEventListener("click", async () => {
+    $("logout").addEventListener("click", async () => {
       try {
         await signOut(auth);
       } catch (error) {
-        alert(friendlyError(error));
+        alert(errorText(error));
       }
     });
 
-    function stopListeners() {
-      unsubscribeListeners.forEach((unsubscribe) => unsubscribe());
-      unsubscribeListeners = [];
-    }
-
     async function getProfile(uid) {
-      const profileSnap = await getDoc(doc(db, "users", uid));
-
-      if (!profileSnap.exists()) {
-        return null;
-      }
-
-      return {
-        uid,
-        ...profileSnap.data()
-      };
+      const snapshot = await getDoc(doc(db, "users", uid));
+      return snapshot.exists()
+        ? { uid, ...snapshot.data() }
+        : null;
     }
 
-    function makeEmptyMessage(text) {
+    function emptyMessage(text) {
       const div = document.createElement("div");
       div.className = "muted";
       div.textContent = text;
       return div;
     }
 
-    function makePerson(name, subtitle = "") {
+    function makePerson(name, detail = "") {
       const person = document.createElement("div");
       person.className = "person";
 
       const info = document.createElement("div");
       info.className = "person-info";
 
-      const username = document.createElement("div");
-      username.className = "username";
-      username.textContent = name;
+      const title = document.createElement("div");
+      title.className = "username";
+      title.textContent = name;
+      info.appendChild(title);
 
-      info.appendChild(username);
-
-      if (subtitle) {
-        const detail = document.createElement("div");
-        detail.className = "muted";
-        detail.textContent = subtitle;
-        info.appendChild(detail);
+      if (detail) {
+        const subtitle = document.createElement("div");
+        subtitle.className = "muted";
+        subtitle.textContent = detail;
+        info.appendChild(subtitle);
       }
 
       const actions = document.createElement("div");
-      actions.className = "person-actions";
+      actions.className = "actions";
 
       person.append(info, actions);
-
       return { person, actions };
     }
 
-    function addAction(parent, text, callback, className = "") {
+    function addButton(parent, label, callback, className = "") {
       const button = document.createElement("button");
-      button.textContent = text;
-
-      if (className) {
-        button.className = className;
-      }
-
+      button.textContent = label;
+      if (className) button.className = className;
       button.addEventListener("click", callback);
       parent.appendChild(button);
       return button;
@@ -583,11 +452,8 @@
 
     async function sendFriendRequest(targetUid) {
       const me = auth.currentUser;
-
-      if (!me) throw new Error("Сначала войди в аккаунт.");
-      if (targetUid === me.uid) {
-        throw new Error("Нельзя добавить самого себя.");
-      }
+      if (!me) throw new Error("Войди в аккаунт.");
+      if (targetUid === me.uid) throw new Error("Это твой профиль.");
 
       const outgoingQuery = query(
         collection(db, "contactRequests"),
@@ -601,29 +467,25 @@
         where("recipientUid", "==", me.uid)
       );
 
-      const [outgoing, incoming, myContact, theirContact] =
-        await Promise.all([
-          getDocs(outgoingQuery),
-          getDocs(incomingQuery),
-          getDoc(doc(db, "users", me.uid, "contacts", targetUid)),
-          getDoc(doc(db, "users", targetUid, "contacts", me.uid))
-        ]);
+      const [outgoing, incoming, myContact] = await Promise.all([
+        getDocs(outgoingQuery),
+        getDocs(incomingQuery),
+        getDoc(doc(db, "users", me.uid, "contacts", targetUid))
+      ]);
 
-      if (myContact.exists() || theirContact.exists()) {
-        throw new Error("Вы уже друзья.");
-      }
+      if (myContact.exists()) throw new Error("Вы уже друзья.");
 
       if (outgoing.docs.some(d => d.data().status === "pending")) {
-        throw new Error("Заявка этому пользователю уже отправлена.");
+        throw new Error("Заявка уже отправлена.");
       }
 
       if (incoming.docs.some(d => d.data().status === "pending")) {
-        throw new Error(
-          "Этот пользователь уже отправил тебе заявку. Найди её во входящих."
-        );
+        throw new Error("Этот пользователь уже отправил тебе заявку.");
       }
 
-      await setDoc(doc(collection(db, "contactRequests")), {
+      const requestRef = doc(collection(db, "contactRequests"));
+
+      await setDoc(requestRef, {
         senderUid: me.uid,
         recipientUid: targetUid,
         status: "pending",
@@ -631,9 +493,9 @@
       });
     }
 
+    // ПРИНЯТИЕ ЗАЯВКИ
     async function acceptRequest(requestId, senderUid) {
       const me = auth.currentUser;
-
       if (!me) {
         alert("Сначала войди в аккаунт.");
         return;
@@ -647,20 +509,20 @@
         const requestSnap = await getDoc(requestRef);
 
         if (!requestSnap.exists()) {
-          throw new Error("Заявка больше не существует.");
+          throw new Error("Заявка не найдена.");
         }
 
-        const requestData = requestSnap.data();
+        const data = requestSnap.data();
 
-        if (requestData.recipientUid !== me.uid) {
-          throw new Error("Принять заявку может только её получатель.");
+        if (data.recipientUid !== me.uid) {
+          throw new Error("Ты не получатель этой заявки.");
         }
 
-        if (requestData.senderUid !== senderUid) {
-          throw new Error("UID отправителя не совпадает с заявкой.");
+        if (data.senderUid !== senderUid) {
+          throw new Error("Не совпадает отправитель заявки.");
         }
 
-        if (requestData.status !== "pending") {
+        if (data.status !== "pending") {
           throw new Error("Заявка уже обработана.");
         }
 
@@ -668,19 +530,10 @@
           db, "users", me.uid, "contacts", senderUid
         );
 
-        const senderContactRef = doc(
-          db, "users", senderUid, "contacts", me.uid
-        );
+        const myContactSnap = await getDoc(myContactRef);
 
-        const [myContact, senderContact] = await Promise.all([
-          getDoc(myContactRef),
-          getDoc(senderContactRef)
-        ]);
-
-        if (myContact.exists() || senderContact.exists()) {
-          throw new Error(
-            "Контакт уже существует. Обнови страницу и проверь список друзей."
-          );
+        if (myContactSnap.exists()) {
+          throw new Error("Этот контакт уже существует. Обнови страницу.");
         }
 
         const batch = writeBatch(db);
@@ -690,25 +543,22 @@
           createdAt: serverTimestamp()
         });
 
-        batch.set(senderContactRef, {
-          requestId,
-          createdAt: serverTimestamp()
-        });
+        batch.set(
+          doc(db, "users", senderUid, "contacts", me.uid),
+          {
+            requestId,
+            createdAt: serverTimestamp()
+          }
+        );
 
-        batch.update(requestRef, {
-          status: "accepted"
-        });
+        batch.update(requestRef, { status: "accepted" });
 
         await batch.commit();
 
-        setStatus(
-          "authStatus",
-          "Заявка принята! Вы теперь в контактах.",
-          "success"
-        );
+        alert("Заявка принята! Обнови список друзей, если он не обновился.");
       } catch (error) {
         console.error("Ошибка принятия заявки:", error);
-        alert("Не удалось принять заявку: " + friendlyError(error));
+        alert("Не удалось принять заявку: " + errorText(error));
       } finally {
         accepting.delete(requestId);
       }
@@ -716,42 +566,41 @@
 
     async function rejectRequest(requestId) {
       const me = auth.currentUser;
-
       if (!me || rejecting.has(requestId)) return;
+
       rejecting.add(requestId);
 
       try {
         const requestRef = doc(db, "contactRequests", requestId);
-        const requestSnap = await getDoc(requestRef);
+        const snapshot = await getDoc(requestRef);
 
-        if (!requestSnap.exists()) {
-          throw new Error("Заявка больше не существует.");
+        if (!snapshot.exists()) {
+          throw new Error("Заявка не найдена.");
         }
 
-        const data = requestSnap.data();
+        const data = snapshot.data();
 
         if (data.recipientUid !== me.uid || data.status !== "pending") {
           throw new Error("Эту заявку нельзя отклонить.");
         }
 
-        await writeBatch(db).update;
         const batch = writeBatch(db);
         batch.update(requestRef, { status: "rejected" });
         await batch.commit();
       } catch (error) {
         console.error("Ошибка отклонения заявки:", error);
-        alert("Не удалось отклонить заявку: " + friendlyError(error));
+        alert("Не удалось отклонить заявку: " + errorText(error));
       } finally {
         rejecting.delete(requestId);
       }
     }
 
     async function renderIncoming(snapshot) {
-      const container = $("incomingList");
+      const container = $("incoming");
       container.replaceChildren();
 
       if (snapshot.empty) {
-        container.appendChild(makeEmptyMessage("Новых заявок нет."));
+        container.appendChild(emptyMessage("Новых заявок нет."));
         return;
       }
 
@@ -760,18 +609,16 @@
 
         try {
           const profile = await getProfile(data.senderUid);
-          const username = profile?.username || "Пользователь";
-
           const { person, actions } = makePerson(
-            username,
-            "Хочет добавить тебя в друзья"
+            profile?.username || "Пользователь",
+            "Заявка в друзья"
           );
 
-          addAction(actions, "Принять", () =>
+          addButton(actions, "Принять", () =>
             acceptRequest(requestDoc.id, data.senderUid)
           );
 
-          addAction(
+          addButton(
             actions,
             "Отклонить",
             () => rejectRequest(requestDoc.id),
@@ -780,75 +627,65 @@
 
           container.appendChild(person);
         } catch (error) {
-          console.error("Не удалось загрузить отправителя:", error);
+          console.error(error);
+          container.appendChild(
+            emptyMessage("Не удалось загрузить одну из заявок.")
+          );
         }
       }
     }
 
     async function renderOutgoing(snapshot) {
-      const container = $("outgoingList");
+      const container = $("outgoing");
       container.replaceChildren();
 
       if (snapshot.empty) {
-        container.appendChild(makeEmptyMessage("Отправленных заявок нет."));
+        container.appendChild(emptyMessage("Активных заявок нет."));
         return;
       }
 
       for (const requestDoc of snapshot.docs) {
         const data = requestDoc.data();
 
-        if (data.status !== "pending") continue;
-
         try {
           const profile = await getProfile(data.recipientUid);
-          const username = profile?.username || "Пользователь";
-
           const { person } = makePerson(
-            username,
-            "Заявка ожидает ответа"
+            profile?.username || "Пользователь",
+            "Ожидает ответа"
           );
-
           container.appendChild(person);
         } catch (error) {
-          console.error("Не удалось загрузить получателя:", error);
+          console.error(error);
         }
-      }
-
-      if (!container.childElementCount) {
-        container.appendChild(makeEmptyMessage("Активных заявок нет."));
       }
     }
 
     async function renderContacts(snapshot) {
-      const container = $("contactsList");
+      const container = $("contacts");
       container.replaceChildren();
 
       if (snapshot.empty) {
-        container.appendChild(makeEmptyMessage("Пока нет друзей."));
+        container.appendChild(emptyMessage("Пока нет друзей."));
         return;
       }
 
       for (const contactDoc of snapshot.docs) {
-        const uid = contactDoc.id;
-
         try {
-          const profile = await getProfile(uid);
-          const username = profile?.username || "Пользователь";
-
+          const profile = await getProfile(contactDoc.id);
           const { person, actions } = makePerson(
-            username,
+            profile?.username || "Пользователь",
             "Друг в Chatly"
           );
 
-          addAction(actions, "Открыть чат", () => {
-            const url = new URL("chat.html", window.location.href);
-            url.searchParams.set("uid", uid);
-            window.location.href = url.toString();
+          addButton(actions, "Открыть чат", () => {
+            const url = new URL("chat.html", location.href);
+            url.searchParams.set("uid", contactDoc.id);
+            location.href = url.href;
           });
 
           container.appendChild(person);
         } catch (error) {
-          console.error("Не удалось загрузить контакт:", error);
+          console.error(error);
         }
       }
     }
@@ -868,152 +705,150 @@
         where("status", "==", "pending")
       );
 
-      const contactsRef = collection(db, "users", uid, "contacts");
+      listeners.push(onSnapshot(
+        incomingQuery,
+        snapshot => renderIncoming(snapshot),
+        error => {
+          console.error("Входящие заявки:", error);
+          $("incoming").textContent = errorText(error);
+        }
+      ));
 
-      unsubscribeListeners.push(
-        onSnapshot(
-          incomingQuery,
-          snapshot => renderIncoming(snapshot),
-          error => {
-            console.error("Ошибка входящих заявок:", error);
-            $("incomingList").textContent =
-              "Не удалось загрузить заявки: " + friendlyError(error);
-          }
-        )
-      );
+      listeners.push(onSnapshot(
+        outgoingQuery,
+        snapshot => renderOutgoing(snapshot),
+        error => {
+          console.error("Исходящие заявки:", error);
+          $("outgoing").textContent = errorText(error);
+        }
+      ));
 
-      unsubscribeListeners.push(
-        onSnapshot(
-          outgoingQuery,
-          snapshot => renderOutgoing(snapshot),
-          error => {
-            console.error("Ошибка исходящих заявок:", error);
-            $("outgoingList").textContent =
-              "Не удалось загрузить заявки: " + friendlyError(error);
-          }
-        )
-      );
-
-      unsubscribeListeners.push(
-        onSnapshot(
-          contactsRef,
-          snapshot => renderContacts(snapshot),
-          error => {
-            console.error("Ошибка контактов:", error);
-            $("contactsList").textContent =
-              "Не удалось загрузить контакты: " + friendlyError(error);
-          }
-        )
-      );
+      listeners.push(onSnapshot(
+        collection(db, "users", uid, "contacts"),
+        snapshot => renderContacts(snapshot),
+        error => {
+          console.error("Контакты:", error);
+          $("contacts").textContent = errorText(error);
+        }
+      ));
     }
 
-    $("searchForm").addEventListener("submit", async (event) => {
+    $("searchForm").addEventListener("submit", async event => {
       event.preventDefault();
 
-      const username = $("searchInput").value.trim().toLowerCase();
-
+      const username = $("searchUsername").value.trim().toLowerCase();
       $("searchButton").disabled = true;
       $("searchResult").replaceChildren();
-      setStatus("searchStatus", "Ищем пользователя…");
+      status("searchStatus", "Ищем…");
 
       try {
         if (!/^[a-z0-9_]{3,20}$/.test(username)) {
-          throw new Error(
-            "Введи имя из 3–20 латинских букв, цифр или символов _."
-          );
+          throw new Error("Имя должно содержать 3–20 латинских букв, цифр или _.");
         }
 
-        const usernameSnap = await getDoc(doc(db, "usernames", username));
+        const nameSnap = await getDoc(doc(db, "usernames", username));
 
-        if (!usernameSnap.exists()) {
-          throw new Error("Пользователь с таким именем не найден.");
+        if (!nameSnap.exists()) {
+          throw new Error("Пользователь не найден.");
         }
 
-        const targetUid = usernameSnap.data().uid;
+        const targetUid = nameSnap.data().uid;
 
-        if (!targetUid) {
-          throw new Error("У профиля нет UID.");
-        }
-
+        if (!targetUid) throw new Error("У пользователя нет UID.");
         if (targetUid === auth.currentUser.uid) {
-          throw new Error("Это твоё собственное имя пользователя.");
+          throw new Error("Это твой собственный профиль.");
         }
 
         const profile = await getProfile(targetUid);
-
-        if (!profile) {
-          throw new Error("Профиль пользователя не найден.");
-        }
+        if (!profile) throw new Error("Профиль не найден.");
 
         const { person, actions } = makePerson(
           profile.username,
           "Пользователь Chatly"
         );
 
-        addAction(actions, "Добавить", async (event) => {
-          const button = event.currentTarget;
+        addButton(actions, "Добавить", async buttonEvent => {
+          const button = buttonEvent.currentTarget;
           button.disabled = true;
-          setStatus("searchStatus", "Отправляем заявку…");
+          status("searchStatus", "Отправляем заявку…");
 
           try {
             await sendFriendRequest(targetUid);
-            setStatus("searchStatus", "Заявка отправлена!", "success");
+            status("searchStatus", "Заявка отправлена!", "success");
             button.textContent = "Отправлено";
           } catch (error) {
-            console.error("Ошибка отправки заявки:", error);
-            setStatus(
-              "searchStatus",
-              friendlyError(error),
-              "error"
-            );
+            console.error(error);
+            status("searchStatus", errorText(error), "error");
             button.disabled = false;
           }
         });
 
         $("searchResult").appendChild(person);
-        setStatus("searchStatus", "");
+        status("searchStatus", "");
       } catch (error) {
-        console.error("Ошибка поиска:", error);
-        setStatus("searchStatus", friendlyError(error), "error");
+        console.error("Поиск:", error);
+        status("searchStatus", errorText(error), "error");
       } finally {
         $("searchButton").disabled = false;
       }
     });
 
-    onAuthStateChanged(auth, async (user) => {
+    // ВХОД: интерфейс не ждёт бесконечно загрузки профиля.
+    onAuthStateChanged(auth, async user => {
+      const version = ++profileLoadVersion;
       stopListeners();
+      activeUid = user?.uid || null;
 
       $("authPanel").classList.toggle("hidden", !!user);
       $("appPanel").classList.toggle("hidden", !user);
-      $("logoutButton").classList.toggle("hidden", !user);
+      $("logout").classList.toggle("hidden", !user);
 
       if (!user) {
-        currentProfile = null;
+        $("profile").textContent = "";
         return;
       }
 
-      try {
-        currentProfile = await getProfile(user.uid);
+      $("profile").textContent = "Вход выполнен. Загружаем профиль…";
 
-        if (!currentProfile) {
-          throw new Error(
-            "Профиль не найден. Возможно, регистрация не завершилась."
-          );
+      try {
+        const profile = await getProfile(user.uid);
+
+        // Игнорируем старый результат, если аккаунт уже сменился.
+        if (version !== profileLoadVersion || auth.currentUser?.uid !== user.uid) {
+          return;
         }
 
-        $("myProfile").textContent =
-          "@" + currentProfile.username;
+        if (!profile) {
+          $("profile").textContent =
+            "Вход выполнен, но профиль не найден в Firestore.";
+          status(
+            "authStatus",
+            "Проверь регистрацию и документ users/" + user.uid,
+            "error"
+          );
+          return;
+        }
 
+        $("profile").textContent = "@" + profile.username;
+        status("authStatus", "");
         startListeners(user.uid);
       } catch (error) {
-        console.error("Ошибка загрузки профиля:", error);
-        alert(
-          "Не удалось загрузить профиль: " + friendlyError(error)
+        console.error("Загрузка профиля:", error);
+
+        if (version !== profileLoadVersion) return;
+
+        $("profile").textContent =
+          "Firebase вошёл в аккаунт, но не удалось прочитать профиль.";
+
+        status(
+          "authStatus",
+          "Ошибка профиля: " + errorText(error),
+          "error"
         );
       }
     });
 
-    showAuthMode(false);
+    switchMode(false);
   </script>
 </body>
 </html>
