@@ -4,136 +4,155 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chatly — твой мессенджер</title>
+  <title>Chatly — общайся с друзьями</title>
   <style>
     * { box-sizing: border-box; }
     body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f1f2fa;
-      color: #24233a;
+      margin: 0; font-family: Arial, sans-serif;
+      background: #f2f1fa; color: #25233b;
     }
     header {
-      background: #6757e8;
-      color: white;
-      padding: 22px;
+      padding: 18px; background: #6757e8; color: white;
     }
-    header h1 { margin: 0 0 6px; }
-    main { max-width: 620px; margin: auto; padding: 18px; }
+    header h1 { margin: 0 0 5px; }
+    main { max-width: 700px; margin: auto; padding: 16px; }
     .card {
-      background: white;
-      border-radius: 18px;
-      padding: 20px;
-      margin-bottom: 16px;
-      box-shadow: 0 4px 15px #25204b0c;
+      background: white; border-radius: 16px;
+      padding: 16px; margin-bottom: 14px;
+      box-shadow: 0 3px 12px #2420440b;
     }
-    h2 { margin-top: 0; }
+    h2 { margin-top: 0; font-size: 20px; }
     input {
-      display: block;
-      width: 100%;
-      padding: 13px;
-      margin: 10px 0;
-      border: 1px solid #d9d6eb;
-      border-radius: 11px;
-      font-size: 16px;
+      width: 100%; min-width: 0; padding: 12px;
+      margin: 7px 0; border: 1px solid #d9d5ee;
+      border-radius: 10px; font-size: 16px;
     }
     button {
-      padding: 12px 16px;
-      border: 0;
-      border-radius: 11px;
-      background: #6757e8;
-      color: white;
-      font-size: 15px;
-      cursor: pointer;
+      border: 0; border-radius: 10px; padding: 12px 14px;
+      background: #6757e8; color: white;
+      font-size: 15px; cursor: pointer;
     }
-    button:disabled { opacity: .5; }
-    .secondary { background: #e9e6ff; color: #5142c5; }
-    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-    #messages {
-      height: 42vh;
-      min-height: 230px;
-      overflow-y: auto;
-      background: #faf9ff;
-      border-radius: 12px;
-      padding: 12px;
+    button:disabled { opacity: .55; }
+    .secondary { background: #ece9ff; color: #5142c5; }
+    .line { display: flex; gap: 8px; align-items: center; }
+    .line input { flex: 1; }
+    .line button { flex-shrink: 0; }
+    .person {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 0; border-bottom: 1px solid #efedf7;
     }
-    .message {
-      background: #eae6ff;
-      padding: 10px;
-      margin: 8px 0;
-      border-radius: 12px;
+    .person:last-child { border-bottom: 0; }
+    .person-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .hint { font-size: 13px; color: #77738c; }
+    #status { overflow-wrap: anywhere; }
+    #chatMessages {
+      height: 34vh; min-height: 180px; overflow-y: auto;
+      padding: 10px; background: #faf9ff; border-radius: 12px;
+    }
+    .bubble {
+      margin: 8px 0; padding: 10px;
+      background: #eae6ff; border-radius: 12px;
       overflow-wrap: anywhere;
     }
-    .meta { font-size: 12px; color: #696580; margin-bottom: 5px; }
-    .composer { display: flex; gap: 8px; margin-top: 10px; }
-    .composer input { flex: 1; min-width: 0; }
-    .hint { color: #747187; font-size: 13px; }
-    #status { overflow-wrap: anywhere; }
+    .bubble.mine { background: #dff5e8; }
+    .small { font-size: 12px; color: #716d83; margin-bottom: 4px; }
     [hidden] { display: none !important; }
   </style>
 </head>
 <body>
 <header>
-  <h1>💬 Chatly</h1>
-  <div>Общайся без границ</div>
+  <h1>💜 Chatly</h1>
+  <div>Твои друзья. Твои переписки.</div>
 </header>
 
 <main>
-  <p id="status" role="status">Подключаемся к Chatly...</p>
+  <p id="status" role="status">Подключаемся...</p>
 
-  <section id="auth" class="card" hidden>
-    <h2 id="authTitle">Добро пожаловать!</h2>
-    <p id="authHint">Войди или создай аккаунт.</p>
+  <section id="authCard" class="card" hidden>
+    <h2 id="authTitle">Вход в Chatly</h2>
     <form id="authForm">
       <input id="email" type="email" placeholder="Email"
         autocomplete="email" maxlength="254" required>
       <input id="password" type="password" placeholder="Пароль"
         autocomplete="current-password" minlength="6"
         maxlength="128" required>
-      <div class="actions">
-        <button id="submitAuth" type="submit">Войти</button>
-        <button id="toggleAuth" class="secondary" type="button">
-          Создать аккаунт
+      <div class="line">
+        <button id="authSubmit" type="submit">Войти</button>
+        <button id="authSwitch" class="secondary" type="button">
+          Регистрация
         </button>
       </div>
     </form>
-    <p class="hint">
-      Используй свой email и придумай надёжный пароль.
-    </p>
   </section>
 
-  <section id="profile" class="card" hidden>
-    <h2>Твой аккаунт</h2>
-    <p id="userEmail"></p>
-    <button id="logout" class="secondary">Выйти</button>
-  </section>
-
-  <section id="chat" class="card" hidden>
-    <h2>🌍 Общая комната</h2>
-    <div id="messages" aria-live="polite"></div>
-    <form id="messageForm" class="composer">
-      <input id="messageText" placeholder="Напиши сообщение..."
-        maxlength="500" autocomplete="off" required>
-      <button id="send" type="submit">➤</button>
+  <section id="setupCard" class="card" hidden>
+    <h2>Придумай username</h2>
+    <p>Это имя увидят друзья. Email останется скрытым.</p>
+    <form id="usernameForm">
+      <input id="usernameInput" placeholder="Например, dima123"
+        minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]{3,20}"
+        autocomplete="off" required>
+      <p class="hint">3–20 символов: латинские буквы, цифры и _</p>
+      <button type="submit">Создать профиль</button>
     </form>
-    <p class="hint">
-      Общая комната: другие вошедшие пользователи могут читать сообщения.
-      Не отправляй личные данные.
-    </p>
+  </section>
+
+  <section id="app" hidden>
+    <section class="card">
+      <h2>👤 Мой профиль</h2>
+      <p id="myUsername"></p>
+      <button id="logout" class="secondary">Выйти</button>
+    </section>
+
+    <section class="card">
+      <h2>🔎 Найти друга</h2>
+      <form id="searchForm" class="line">
+        <input id="searchInput" placeholder="Username, например dima123"
+          maxlength="20" autocomplete="off" required>
+        <button type="submit">Найти</button>
+      </form>
+      <div id="searchResult"></div>
+      <p class="hint">Ищи по точному username, без email.</p>
+    </section>
+
+    <section class="card">
+      <h2>👥 Мои контакты</h2>
+      <div id="contactsList">Загружаем контакты...</div>
+    </section>
+
+    <section class="card">
+      <h2>💬 Мои чаты</h2>
+      <div id="chatsList">Загружаем чаты...</div>
+    </section>
+
+    <section id="conversation" class="card" hidden>
+      <h2 id="conversationTitle">Переписка</h2>
+      <button id="closeChat" class="secondary">← Назад</button>
+      <div id="chatMessages" aria-live="polite"></div>
+      <form id="messageForm" class="line">
+        <input id="messageInput" placeholder="Напиши сообщение..."
+          maxlength="500" autocomplete="off" required>
+        <button id="sendButton" type="submit">➤</button>
+      </form>
+      <p class="hint">Личная переписка видна только участникам этого чата.</p>
+    </section>
   </section>
 </main>
 
 <script type="module">
   import { initializeApp } from
     "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+
   import {
     getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
     signInWithEmailAndPassword, signOut
   } from
     "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
   import {
-    getFirestore, collection, addDoc, query, orderBy, limit,
-    onSnapshot, serverTimestamp
+    getFirestore, doc, getDoc, setDoc, addDoc,
+    collection, query, where, onSnapshot, runTransaction,
+    serverTimestamp
   } from
     "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
@@ -147,174 +166,407 @@
     measurementId: "G-WJ2NPP9T45"
   };
 
+  const appFirebase = initializeApp(firebaseConfig);
+  const auth = getAuth(appFirebase);
+  const db = getFirestore(appFirebase);
   const $ = id => document.getElementById(id);
-  const status = $("status");
-  let isRegistering = false;
-  let stopMessages = null;
-  let currentUser = null;
-  let busy = false;
 
-  function showError(error) {
-    const messages = {
-      "auth/email-already-in-use": "Этот email уже зарегистрирован. Попробуй войти.",
-      "auth/invalid-email": "Проверь правильность email.",
-      "auth/weak-password": "Пароль слишком простой. Используй не менее 6 символов.",
+  let currentUser = null;
+  let myProfile = null;
+  let registering = false;
+  let busy = false;
+  let activeChatId = null;
+  let stops = [];
+  let stopMessages = null;
+
+  function message(text) {
+    $("status").textContent = text;
+  }
+
+  function errorText(error) {
+    const known = {
+      "auth/email-already-in-use": "Этот email уже зарегистрирован.",
+      "auth/invalid-email": "Проверь email.",
+      "auth/weak-password": "Нужен более надёжный пароль, минимум 6 символов.",
       "auth/invalid-credential": "Неверный email или пароль.",
-      "auth/network-request-failed": "Проблема с интернетом. Попробуй ещё раз.",
       "auth/too-many-requests": "Слишком много попыток. Попробуй позже.",
       "auth/operation-not-allowed": "Включи Email/Password в Firebase Authentication.",
-      "permission-denied": "Firebase запретил доступ. Проверь правила Firestore."
+      "permission-denied": "Firebase запретил доступ. Проверь правила Firestore.",
+      "already-exists": "Это имя уже занято.",
+      "unavailable": "Проблема с интернетом. Попробуй ещё раз."
     };
-    status.textContent =
-      messages[error.code] ||
-      messages[error.code?.split("/").pop()] ||
-      "Ошибка: " + (error.message || "попробуй ещё раз");
+    message(known[error.code] ||
+      "Ошибка: " + (error.message || "попробуй ещё раз"));
   }
 
-  function updateAuthMode() {
-    $("authTitle").textContent = isRegistering
-      ? "Создай аккаунт 💜" : "С возвращением!";
-    $("authHint").textContent = isRegistering
-      ? "Зарегистрируйся с помощью email и пароля."
-      : "Войди в свой аккаунт Chatly.";
-    $("submitAuth").textContent = isRegistering
-      ? "Зарегистрироваться" : "Войти";
-    $("toggleAuth").textContent = isRegistering
-      ? "У меня уже есть аккаунт" : "Создать аккаунт";
-    $("password").autocomplete = isRegistering
-      ? "new-password" : "current-password";
+  function clearListeners() {
+    stops.forEach(stop => stop());
+    stops = [];
+    if (stopMessages) stopMessages();
+    stopMessages = null;
   }
 
-  $("toggleAuth").addEventListener("click", () => {
-    isRegistering = !isRegistering;
-    updateAuthMode();
-    status.textContent = "";
+  function showAuth() {
+    $("authCard").hidden = false;
+    $("setupCard").hidden = true;
+    $("app").hidden = true;
+    $("conversation").hidden = true;
+  }
+
+  function showApp() {
+    $("authCard").hidden = true;
+    $("setupCard").hidden = true;
+    $("app").hidden = false;
+  }
+
+  $("authSwitch").addEventListener("click", () => {
+    registering = !registering;
+    $("authTitle").textContent =
+      registering ? "Создать аккаунт" : "Вход в Chatly";
+    $("authSubmit").textContent = registering ? "Зарегистрироваться" : "Войти";
+    $("authSwitch").textContent = registering ? "У меня есть аккаунт" : "Регистрация";
+    $("password").autocomplete = registering ? "new-password" : "current-password";
   });
 
-  try {
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    const messagesRef = collection(db, "rooms", "general", "messages");
-    const recentMessages = query(
-      messagesRef, orderBy("createdAt", "desc"), limit(100)
-    );
+  $("authForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    if (busy) return;
+    busy = true;
+    $("authSubmit").disabled = true;
 
-    $("authForm").addEventListener("submit", async event => {
-      event.preventDefault();
-      if (busy) return;
-      busy = true;
-      $("submitAuth").disabled = true;
-      status.textContent = isRegistering
-        ? "Создаём аккаунт..." : "Входим...";
+    try {
+      if (registering) {
+        await createUserWithEmailAndPassword(
+          auth, $("email").value.trim(), $("password").value
+        );
+      } else {
+        await signInWithEmailAndPassword(
+          auth, $("email").value.trim(), $("password").value
+        );
+      }
+    } catch (error) {
+      errorText(error);
+    } finally {
+      busy = false;
+      $("authSubmit").disabled = false;
+    }
+  });
 
-      try {
-        const email = $("email").value.trim();
-        const password = $("password").value;
+  $("logout").addEventListener("click", async () => {
+    try {
+      clearListeners();
+      await signOut(auth);
+    } catch (error) {
+      errorText(error);
+    }
+  });
 
-        if (isRegistering) {
-          await createUserWithEmailAndPassword(auth, email, password);
-          status.textContent = "Аккаунт создан!";
-        } else {
-          await signInWithEmailAndPassword(auth, email, password);
-          status.textContent = "Ты вошёл в Chatly!";
+  $("usernameForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!currentUser || busy) return;
+
+    const username = $("usernameInput").value.trim().toLowerCase();
+    if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+      message("Username: 3–20 символов, только a-z, цифры и _.");
+      return;
+    }
+
+    busy = true;
+    try {
+      const profileRef = doc(db, "users", currentUser.uid);
+      const usernameRef = doc(db, "usernames", username);
+
+      await runTransaction(db, async transaction => {
+        const existingProfile = await transaction.get(profileRef);
+        if (existingProfile.exists()) {
+          throw new Error("Профиль уже создан. Перезагрузи страницу.");
         }
-      } catch (error) {
-        showError(error);
-      } finally {
-        busy = false;
-        $("submitAuth").disabled = false;
+
+        const reserved = await transaction.get(usernameRef);
+        if (reserved.exists()) {
+          throw new Error("Это имя занято. Попробуй другое.");
+        }
+
+        transaction.set(usernameRef, { uid: currentUser.uid });
+        transaction.set(profileRef, {
+          username,
+          createdAt: serverTimestamp()
+        });
+      });
+
+      message("Профиль создан!");
+    } catch (error) {
+      if (error.message?.includes("имя занято")) {
+        message(error.message);
+      } else {
+        errorText(error);
       }
-    });
+    } finally {
+      busy = false;
+    }
+  });
 
-    $("logout").addEventListener("click", async () => {
-      try {
-        await signOut(auth);
-        status.textContent = "Ты вышел из аккаунта.";
-      } catch (error) {
-        showError(error);
-      }
-    });
+  async function getProfile(uid) {
+    const snap = await getDoc(doc(db, "users", uid));
+    return snap.exists() ? snap.data() : null;
+  }
 
-    onAuthStateChanged(auth, user => {
-      currentUser = user;
-      if (stopMessages) {
-        stopMessages();
-        stopMessages = null;
-      }
+  function personRow(username, buttonText, action) {
+    const row = document.createElement("div");
+    row.className = "person";
 
-      $("auth").hidden = !!user;
-      $("profile").hidden = !user;
-      $("chat").hidden = !user;
+    const name = document.createElement("div");
+    name.className = "person-name";
+    name.textContent = "@" + username;
 
-      if (!user) {
-        $("userEmail").textContent = "";
-        $("messages").replaceChildren();
-        $("send").disabled = true;
-        status.textContent = "Войди или создай аккаунт.";
+    const button = document.createElement("button");
+    button.textContent = buttonText;
+    button.addEventListener("click", action);
+
+    row.append(name, button);
+    return row;
+  }
+
+  $("searchForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!currentUser) return;
+
+    const username = $("searchInput").value.trim().replace(/^@/, "").toLowerCase();
+    const result = $("searchResult");
+    result.replaceChildren();
+
+    if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+      result.textContent = "Введи username из 3–20 символов.";
+      return;
+    }
+
+    try {
+      const snap = await getDoc(doc(db, "usernames", username));
+      if (!snap.exists()) {
+        result.textContent = "Пользователь не найден.";
         return;
       }
 
-      $("userEmail").textContent = user.email || "Email не указан";
-      status.textContent = "Подключаем общую комнату...";
+      const targetUid = snap.data().uid;
+      if (targetUid === currentUser.uid) {
+        result.textContent = "Это твой username 🙂";
+        return;
+      }
 
-      stopMessages = onSnapshot(recentMessages, snapshot => {
-        if (currentUser?.uid !== user.uid) return;
+      const profile = await getProfile(targetUid);
+      if (!profile) {
+        result.textContent = "Профиль не найден.";
+        return;
+      }
+
+      result.appendChild(personRow(profile.username, "Добавить", async () => {
+        try {
+          await setDoc(
+            doc(db, "users", currentUser.uid, "contacts", targetUid),
+            { createdAt: serverTimestamp() }
+          );
+          result.textContent = "Контакт добавлен!";
+        } catch (error) {
+          errorText(error);
+        }
+      }));
+    } catch (error) {
+      errorText(error);
+    }
+  });
+
+  async function openChat(otherUid) {
+    if (!currentUser || otherUid === currentUser.uid) return;
+
+    try {
+      const other = await getProfile(otherUid);
+      if (!other) {
+        message("Не удалось найти профиль собеседника.");
+        return;
+      }
+
+      const members = [currentUser.uid, otherUid].sort();
+      const chatId = members.join("_");
+      const chatRef = doc(db, "chats", chatId);
+
+      await runTransaction(db, async transaction => {
+        const snap = await transaction.get(chatRef);
+        if (!snap.exists()) {
+          transaction.set(chatRef, {
+            members,
+            createdAt: serverTimestamp()
+          });
+        }
+      });
+
+      activeChatId = chatId;
+      $("conversationTitle").textContent = "@" + other.username;
+      $("conversation").hidden = false;
+      $("chatMessages").replaceChildren();
+
+      if (stopMessages) stopMessages();
+
+      const messagesRef = collection(db, "chats", chatId, "messages");
+      stopMessages = onSnapshot(messagesRef, snapshot => {
         const fragment = document.createDocumentFragment();
 
-        [...snapshot.docs].reverse().forEach(doc => {
-          const data = doc.data();
-          const bubble = document.createElement("div");
-          bubble.className = "message";
+        snapshot.docs
+          .sort((a, b) => {
+            const ta = a.data().createdAt?.toMillis?.() || 0;
+            const tb = b.data().createdAt?.toMillis?.() || 0;
+            return ta - tb;
+          })
+          .forEach(item => {
+            const data = item.data();
+            const bubble = document.createElement("div");
+            bubble.className = "bubble" +
+              (data.uid === currentUser.uid ? " mine" : "");
 
-          const meta = document.createElement("div");
-          meta.className = "meta";
-          meta.textContent = data.uid === user.uid
-            ? "Ты" : "Участник";
+            const meta = document.createElement("div");
+            meta.className = "small";
+            meta.textContent = data.uid === currentUser.uid
+              ? "Ты" : "@" + other.username;
 
-          const text = document.createElement("div");
-          text.textContent = data.text || "";
-          bubble.append(meta, text);
-          fragment.appendChild(bubble);
-        });
+            const text = document.createElement("div");
+            text.textContent = data.text || "";
+            bubble.append(meta, text);
+            fragment.appendChild(bubble);
+          });
 
-        $("messages").replaceChildren(fragment);
-        $("messages").scrollTop = $("messages").scrollHeight;
-        status.textContent = "Chatly онлайн 💜";
-        $("send").disabled = false;
-      }, error => {
-        showError(error);
-      });
-    });
+        $("chatMessages").replaceChildren(fragment);
+        $("chatMessages").scrollTop = $("chatMessages").scrollHeight;
+      }, errorText);
 
-    $("messageForm").addEventListener("submit", async event => {
-      event.preventDefault();
-      if (!currentUser || busy) return;
+      message("Открыта личная переписка.");
+    } catch (error) {
+      errorText(error);
+    }
+  }
 
-      const text = $("messageText").value.trim();
-      if (!text || text.length > 500) return;
+  $("closeChat").addEventListener("click", () => {
+    $("conversation").hidden = true;
+    if (stopMessages) stopMessages();
+    stopMessages = null;
+    activeChatId = null;
+  });
 
-      busy = true;
-      $("send").disabled = true;
-      try {
-        await addDoc(messagesRef, {
+  $("messageForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!currentUser || !activeChatId || busy) return;
+
+    const text = $("messageInput").value.trim();
+    if (!text || text.length > 500) return;
+
+    busy = true;
+    $("sendButton").disabled = true;
+    try {
+      await addDoc(
+        collection(db, "chats", activeChatId, "messages"),
+        {
           text,
           uid: currentUser.uid,
           createdAt: serverTimestamp()
-        });
-        $("messageText").value = "";
-      } catch (error) {
-        showError(error);
-      } finally {
-        busy = false;
-        $("send").disabled = false;
-      }
-    });
+        }
+      );
+      $("messageInput").value = "";
+    } catch (error) {
+      errorText(error);
+    } finally {
+      busy = false;
+      $("sendButton").disabled = false;
+    }
+  });
 
-    updateAuthMode();
-  } catch (error) {
-    showError(error);
+  function watchContacts(uid) {
+    const ref = collection(db, "users", uid, "contacts");
+    const stop = onSnapshot(ref, async snapshot => {
+      const list = $("contactsList");
+      list.replaceChildren();
+
+      if (snapshot.empty) {
+        list.textContent = "Пока нет контактов. Найди друга выше!";
+        return;
+      }
+
+      for (const item of snapshot.docs) {
+        try {
+          const profile = await getProfile(item.id);
+          if (!profile) continue;
+          list.appendChild(personRow(profile.username, "Написать",
+            () => openChat(item.id)));
+        } catch (error) {
+          errorText(error);
+        }
+      }
+    }, errorText);
+    stops.push(stop);
   }
+
+  function watchChats(uid) {
+    const ref = query(
+      collection(db, "chats"),
+      where("members", "array-contains", uid)
+    );
+
+    const stop = onSnapshot(ref, async snapshot => {
+      const list = $("chatsList");
+      list.replaceChildren();
+
+      if (snapshot.empty) {
+        list.textContent = "Пока нет чатов. Добавь контакт и нажми «Написать».";
+        return;
+      }
+
+      for (const item of snapshot.docs) {
+        const otherUid = item.data().members.find(id => id !== uid);
+        if (!otherUid) continue;
+
+        try {
+          const profile = await getProfile(otherUid);
+          if (!profile) continue;
+          list.appendChild(personRow("@" + profile.username, "Открыть",
+            () => openChat(otherUid)));
+        } catch (error) {
+          errorText(error);
+        }
+      }
+    }, errorText);
+    stops.push(stop);
+  }
+
+  onAuthStateChanged(auth, async user => {
+    clearListeners();
+    currentUser = user;
+    myProfile = null;
+    activeChatId = null;
+
+    if (!user) {
+      showAuth();
+      message("Войди или создай аккаунт.");
+      return;
+    }
+
+    try {
+      myProfile = await getProfile(user.uid);
+
+      if (!myProfile) {
+        $("authCard").hidden = true;
+        $("setupCard").hidden = false;
+        $("app").hidden = true;
+        message("Выбери уникальное имя для профиля.");
+        return;
+      }
+
+      showApp();
+      $("myUsername").textContent = "@" + myProfile.username;
+      message("Добро пожаловать в Chatly!");
+
+      watchContacts(user.uid);
+      watchChats(user.uid);
+    } catch (error) {
+      errorText(error);
+    }
+  });
 </script>
 </body>
 </html>
