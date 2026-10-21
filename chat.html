@@ -1,0 +1,304 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chatly — чат</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f1fb;color:#28243d;font-family:Arial,sans-serif}
+header{background:#6757e8;color:white;padding:16px}
+header h1{margin:0 0 5px}
+main{max-width:720px;margin:auto;padding:14px}
+.card{background:white;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 3px 14px #20174b0b}
+button{background:#6757e8;color:white;border:0;border-radius:10px;padding:12px 15px;cursor:pointer}
+.secondary{background:#ece9ff;color:#5141c4}
+input{width:100%;min-width:0;padding:12px;border:1px solid #d9d5ed;border-radius:10px;font-size:16px}
+.line{display:flex;gap:8px;align-items:center}
+.line input{flex:1}
+#messages{height:60vh;min-height:250px;overflow-y:auto;background:#faf9ff;border-radius:12px;padding:10px;margin:14px 0}
+.bubble{background:#eae6ff;border-radius:12px;padding:10px;margin:8px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.bubble.mine{background:#dcf5e7}
+.meta{font-size:12px;color:#77728b;margin-bottom:5px}
+#status{overflow-wrap:anywhere;line-height:1.5}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <h1>💜 Chatly</h1>
+  <div>Личная переписка</div>
+</header>
+
+<main>
+  <section class="card">
+    <button class="secondary" id="back" type="button">← Назад к Chatly</button>
+    <p id="status" role="status">Подключаемся...</p>
+  </section>
+
+  <section class="card" id="chatCard" hidden>
+    <h2 id="title">Личный чат</h2>
+    <div id="messages" aria-live="polite"></div>
+    <form id="messageForm" class="line">
+      <input id="messageInput" maxlength="500"
+        placeholder="Напиши сообщение..." autocomplete="off" required>
+      <button id="send" type="submit">➤</button>
+    </form>
+  </section>
+</main>
+
+<script type="module">
+import { initializeApp } from
+  "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+
+import {
+  getAuth, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+import {
+  getFirestore, doc, getDoc, collection, addDoc,
+  onSnapshot, runTransaction, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
+  authDomain: "chatly-19613.firebaseapp.com",
+  projectId: "chatly-19613",
+  storageBucket: "chatly-19613.firebasestorage.app",
+  messagingSenderId: "1080401916394",
+  appId: "1:1080401916394:web:815e66c78ced380b4c8293",
+  measurementId: "G-WJ2NPP9T45"
+};
+
+const app = initializeApp(firebaseConfig, "ChatlyChatPage");
+const auth = getAuth(app);
+const db = getFirestore(app);
+const $ = id => document.getElementById(id);
+
+const params = new URLSearchParams(window.location.search);
+const otherUid = params.get("uid");
+
+let me = null;
+let chatId = null;
+let stopMessages = null;
+let opening = false;
+let sending = false;
+let pageVersion = 0;
+
+function status(text) {
+  $("status").textContent = text;
+}
+
+function showError(error) {
+  console.error("Chatly chat error:", error);
+
+  const code = error?.code || "";
+
+  if (code.includes("permission-denied")) {
+    status("Нет доступа к чату. Проверь Firestore Rules и контакты обоих пользователей.");
+  } else if (code.includes("unavailable")) {
+    status("Нет соединения с Firebase. Проверь интернет.");
+  } else {
+    status("Не удалось открыть чат: " + (error?.message || code || "неизвестная ошибка"));
+  }
+}
+
+function backHome() {
+  window.location.href = new URL("./", window.location.href).href;
+}
+
+$("back").onclick = backHome;
+
+function makeChatId(a, b) {
+  return [a, b].sort().join("__");
+}
+
+function renderMessages(snapshot, otherProfile, myUid, currentChat) {
+  if (me?.uid !== myUid || chatId !== currentChat) return;
+
+  const list = $("messages");
+  list.replaceChildren();
+
+  const messages = snapshot.docs.slice().sort((a, b) => {
+    const ta = a.data().createdAt?.toMillis?.() || 0;
+    const tb = b.data().createdAt?.toMillis?.() || 0;
+    return ta - tb;
+  });
+
+  for (const item of messages) {
+    const data = item.data();
+    const bubble = document.createElement("div");
+    bubble.className = "bubble" + (data.uid === myUid ? " mine" : "");
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = data.uid === myUid
+      ? "Ты"
+      : "@" + (otherProfile.username || "собеседник");
+
+    const text = document.createElement("div");
+    text.textContent = data.text || "";
+
+    bubble.append(meta, text);
+    list.appendChild(bubble);
+  }
+
+  list.scrollTop = list.scrollHeight;
+}
+
+async function openConversation(user, version) {
+  if (opening) return;
+  opening = true;
+
+  try {
+    if (!otherUid || otherUid === user.uid) {
+      status("Некорректная ссылка на собеседника.");
+      return;
+    }
+
+    status("Проверяем контакт...");
+
+    // Сначала проверяем, что пользователь действительно добавлен в контакты.
+    const contactRef = doc(db, "users", user.uid, "contacts", otherUid);
+    const contactSnap = await getDoc(contactRef);
+
+    if (version !== pageVersion || auth.currentUser?.uid !== user.uid) return;
+
+    if (!contactSnap.exists()) {
+      status("Этот пользователь не найден в твоих контактах. Вернись на главную и проверь заявку в друзья.");
+      return;
+    }
+
+    const profileSnap = await getDoc(doc(db, "users", otherUid));
+
+    if (version !== pageVersion || auth.currentUser?.uid !== user.uid) return;
+
+    if (!profileSnap.exists()) {
+      status("Профиль собеседника не найден в Firestore.");
+      return;
+    }
+
+    const otherProfile = profileSnap.data();
+    chatId = makeChatId(user.uid, otherUid);
+
+    const chatRef = doc(db, "chats", chatId);
+    const members = [user.uid, otherUid].sort();
+
+    status("Открываем переписку...");
+
+    await runTransaction(db, async transaction => {
+      const snap = await transaction.get(chatRef);
+
+      if (snap.exists()) {
+        const data = snap.data();
+
+        if (
+          !Array.isArray(data.members) ||
+          !data.members.includes(user.uid) ||
+          !data.members.includes(otherUid)
+        ) {
+          throw new Error("Участники существующего чата не совпадают.");
+        }
+      } else {
+        transaction.set(chatRef, {
+          members,
+          createdAt: serverTimestamp()
+        });
+      }
+    });
+
+    if (version !== pageVersion || auth.currentUser?.uid !== user.uid) return;
+
+    $("title").textContent = "💬 @" + otherProfile.username;
+    $("chatCard").hidden = false;
+
+    const messagesRef = collection(db, "chats", chatId, "messages");
+    const currentChat = chatId;
+
+    stopMessages = onSnapshot(
+      messagesRef,
+      snapshot => renderMessages(
+        snapshot, otherProfile, user.uid, currentChat
+      ),
+      showError
+    );
+
+    status("Ты в чате с @" + otherProfile.username + " 💜");
+  } catch (error) {
+    if (version === pageVersion) showError(error);
+  } finally {
+    opening = false;
+  }
+}
+
+$("messageForm").onsubmit = async event => {
+  event.preventDefault();
+
+  if (!me || !chatId || sending) return;
+
+  const user = me;
+  const currentChat = chatId;
+  const text = $("messageInput").value.trim();
+
+  if (!text || text.length > 500) return;
+
+  sending = true;
+  $("send").disabled = true;
+
+  try {
+    // Повторно проверяем, что контакт существует.
+    const contact = await getDoc(
+      doc(db, "users", user.uid, "contacts", otherUid)
+    );
+
+    if (auth.currentUser?.uid !== user.uid || chatId !== currentChat) return;
+
+    if (!contact.exists()) {
+      throw new Error("Собеседник больше не находится в твоих контактах.");
+    }
+
+    await addDoc(collection(db, "chats", currentChat, "messages"), {
+      text,
+      uid: user.uid,
+      createdAt: serverTimestamp()
+    });
+
+    if (auth.currentUser?.uid === user.uid && chatId === currentChat) {
+      $("messageInput").value = "";
+      $("messageInput").focus();
+    }
+  } catch (error) {
+    showError(error);
+  } finally {
+    sending = false;
+    $("send").disabled = false;
+  }
+};
+
+onAuthStateChanged(auth, async user => {
+  const version = ++pageVersion;
+
+  if (stopMessages) {
+    stopMessages();
+    stopMessages = null;
+  }
+
+  me = user;
+  chatId = null;
+  $("chatCard").hidden = true;
+
+  if (!user) {
+    status("Ты не вошёл в Chatly. Сначала войди на главной странице.");
+    return;
+  }
+
+  await openConversation(user, version);
+});
+
+window.addEventListener("pagehide", () => {
+  if (stopMessages) stopMessages();
+});
+</script>
+</body>
+</html>
