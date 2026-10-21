@@ -8,22 +8,21 @@
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#f3f1fb;color:#28243d;font-family:Arial,sans-serif}
-header{background:#6757e8;color:#fff;padding:18px}
+header{background:#6757e8;color:white;padding:18px}
 header h1{margin:0 0 5px}
 main{max-width:720px;margin:auto;padding:14px}
 .card{background:white;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 3px 14px #20174b0b}
 h2{font-size:19px;margin:0 0 12px}
 input{width:100%;min-width:0;padding:12px;border:1px solid #d9d5ed;border-radius:10px;font-size:16px;margin:6px 0}
-button{background:#6757e8;color:#fff;border:0;border-radius:10px;padding:11px 13px;font-size:14px;cursor:pointer}
-button:disabled{opacity:.55}
+button{background:#6757e8;color:white;border:0;border-radius:10px;padding:11px 13px;font-size:14px;cursor:pointer}
+button:disabled{opacity:.55;cursor:wait}
 .secondary{background:#ece9ff;color:#5141c4}
 .line{display:flex;align-items:center;gap:8px}
 .line input{flex:1}
-.line button{flex-shrink:0}
 .person{display:flex;align-items:center;gap:8px;padding:12px 0;border-bottom:1px solid #efedf6;flex-wrap:wrap}
 .person-name{flex:1;min-width:100px;overflow-wrap:anywhere}
 .hint,.small{font-size:13px;color:#77728b}
-#status{overflow-wrap:anywhere}
+#status{overflow-wrap:anywhere;line-height:1.5}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -98,28 +97,13 @@ button:disabled{opacity:.55}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-
 import {
-  getAuth,
-  onAuthStateChanged,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut
+  getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
+  signInWithEmailAndPassword, signOut
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-
 import {
-  getFirestore,
-  doc,
-  getDoc,
-  addDoc,
-  updateDoc,
-  collection,
-  query,
-  where,
-  onSnapshot,
-  runTransaction,
-  writeBatch,
-  serverTimestamp
+  getFirestore, doc, getDoc, addDoc, updateDoc, collection,
+  query, where, onSnapshot, runTransaction, writeBatch, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -141,18 +125,18 @@ let me = null;
 let profile = null;
 let registering = false;
 let busy = false;
-let stops = [];
 let authGeneration = 0;
+let stops = [];
+const acceptingRequests = new Set();
 
 function status(text) {
   $("status").textContent = text;
 }
 
-function reportError(e) {
-  console.error("Chatly error:", e);
+function reportError(error) {
+  console.error("Chatly error:", error);
 
-  const code = (e?.code || "").replace("firestore/", "");
-
+  const code = (error?.code || "").replace("firestore/", "");
   const messages = {
     "permission-denied": "Firebase запретил действие. Проверь Firestore Rules.",
     "auth/email-already-in-use": "Этот email уже зарегистрирован. Переключись на «Войти».",
@@ -165,18 +149,27 @@ function reportError(e) {
     "unavailable": "Нет соединения с Firebase. Проверь интернет."
   };
 
-  status(messages[code] || ("Ошибка: " + (e?.message || code || "неизвестная ошибка")));
+  status(messages[code] || ("Ошибка: " + (error?.message || code || "неизвестная ошибка")));
+}
+
+function friendlyError(error) {
+  const code = (error?.code || "").replace("firestore/", "");
+  const messages = {
+    "permission-denied": "Firebase отказал в доступе. Проверь правила Firestore.",
+    "unavailable": "Нет соединения с Firebase. Проверь интернет."
+  };
+  return messages[code] || error?.message || code || "Неизвестная ошибка";
 }
 
 function unsubAll() {
-  stops.forEach(fn => {
-    try { fn(); } catch (e) { console.warn(e); }
+  stops.forEach(stop => {
+    try { stop(); } catch (error) { console.warn(error); }
   });
   stops = [];
 }
 
-function addListener(fn) {
-  stops.push(fn);
+function addListener(stop) {
+  stops.push(stop);
 }
 
 function showAuth() {
@@ -197,8 +190,8 @@ function showApp() {
   $("app").hidden = false;
 }
 
-function usernameLabel(p) {
-  return "@" + p.username;
+function usernameLabel(userProfile) {
+  return "@" + userProfile.username;
 }
 
 function makeRow(label, buttonText, action, secondText = null, secondAction = null) {
@@ -233,11 +226,7 @@ async function getProfile(uid) {
   return snap.exists() ? snap.data() : null;
 }
 
-/*
- * ПЕРЕХОД НА ОТДЕЛЬНУЮ СТРАНИЦУ ЧАТА.
- * UID собеседника передаётся в адресе:
- * chat.html?uid=UID_СОБЕСЕДНИКА
- */
+/* Открываем отдельную страницу переписки. */
 function openChat(otherUid) {
   if (!me) {
     status("Сначала войди в Chatly.");
@@ -249,10 +238,36 @@ function openChat(otherUid) {
     return;
   }
 
-  const chatUrl = new URL("chat.html", window.location.href);
-  chatUrl.searchParams.set("uid", otherUid);
+  const url = new URL("chat.html", window.location.href);
+  url.searchParams.set("uid", otherUid);
+  window.location.href = url.href;
+}
 
-  window.location.href = chatUrl.href;
+/* После загрузки профиля подключаем списки только один раз. */
+async function loadCurrentProfile(user, generation) {
+  const p = await getProfile(user.uid);
+
+  if (generation !== authGeneration || auth.currentUser?.uid !== user.uid) {
+    return;
+  }
+
+  profile = p;
+
+  if (!p || typeof p.username !== "string") {
+    showSetup();
+    status("Создай username для своего аккаунта.");
+    return;
+  }
+
+  showApp();
+  $("myUsername").textContent = usernameLabel(p);
+
+  watchRequests(user.uid, "recipientUid", "incomingList", true);
+  watchRequests(user.uid, "senderUid", "outgoingList", false);
+  watchContacts(user.uid);
+  watchChats(user.uid);
+
+  status("Chatly онлайн 💜");
 }
 
 $("authSwitch").onclick = () => {
@@ -263,12 +278,13 @@ $("authSwitch").onclick = () => {
   $("password").autocomplete = registering ? "new-password" : "current-password";
 };
 
-$("authForm").onsubmit = async e => {
-  e.preventDefault();
+$("authForm").onsubmit = async event => {
+  event.preventDefault();
   if (busy) return;
 
   busy = true;
   $("authSubmit").disabled = true;
+  status(registering ? "Создаём аккаунт..." : "Входим в аккаунт...");
 
   try {
     const email = $("email").value.trim();
@@ -279,8 +295,8 @@ $("authForm").onsubmit = async e => {
     } else {
       await signInWithEmailAndPassword(auth, email, password);
     }
-  } catch (e) {
-    reportError(e);
+  } catch (error) {
+    reportError(error);
   } finally {
     busy = false;
     $("authSubmit").disabled = false;
@@ -288,70 +304,67 @@ $("authForm").onsubmit = async e => {
 };
 
 $("logout").onclick = async () => {
-  if (busy) return;
-
-  busy = true;
-  $("logout").disabled = true;
-
   try {
     await signOut(auth);
     status("Ты вышел из Chatly.");
-  } catch (e) {
-    reportError(e);
-  } finally {
-    busy = false;
-    $("logout").disabled = false;
+  } catch (error) {
+    reportError(error);
   }
 };
 
-$("usernameForm").onsubmit = async e => {
-  e.preventDefault();
+/* Создание профиля с проверкой уникальности username. */
+$("usernameForm").onsubmit = async event => {
+  event.preventDefault();
+
   if (!me || busy) return;
 
-  busy = true;
-  $("usernameSubmit").disabled = true;
-
   const userAtStart = me;
+  const generation = authGeneration;
   const username = $("usernameInput").value.trim().toLowerCase();
 
   if (!/^[a-z0-9_]{3,20}$/.test(username)) {
     status("Username: от 3 до 20 латинских букв, цифр или _.");
-    busy = false;
-    $("usernameSubmit").disabled = false;
     return;
   }
 
+  busy = true;
+  $("usernameSubmit").disabled = true;
+  status("Создаём профиль...");
+
   try {
     const userRef = doc(db, "users", userAtStart.uid);
-    const nameRef = doc(db, "usernames", username);
+    const usernameRef = doc(db, "usernames", username);
 
     await runTransaction(db, async tx => {
-      const [u, n] = await Promise.all([
+      const [userSnap, usernameSnap] = await Promise.all([
         tx.get(userRef),
-        tx.get(nameRef)
+        tx.get(usernameRef)
       ]);
 
-      if (u.exists()) throw new Error("PROFILE_ALREADY_EXISTS");
-      if (n.exists()) throw new Error("USERNAME_TAKEN");
+      if (userSnap.exists()) throw new Error("PROFILE_ALREADY_EXISTS");
+      if (usernameSnap.exists()) throw new Error("USERNAME_TAKEN");
 
-      tx.set(nameRef, { uid: userAtStart.uid });
+      tx.set(usernameRef, { uid: userAtStart.uid });
       tx.set(userRef, {
         username,
         createdAt: serverTimestamp()
       });
     });
 
-    if (auth.currentUser?.uid !== userAtStart.uid) return;
-
-    status("Профиль создан!");
-
-  } catch (e) {
-    if (e.message === "USERNAME_TAKEN") {
+    if (auth.currentUser?.uid === userAtStart.uid) {
+      await loadCurrentProfile(userAtStart, generation);
+    }
+  } catch (error) {
+    if (error.message === "USERNAME_TAKEN") {
       status("Этот username занят. Выбери другой.");
-    } else if (e.message === "PROFILE_ALREADY_EXISTS") {
-      status("Профиль уже существует. Перезагрузи страницу.");
+    } else if (error.message === "PROFILE_ALREADY_EXISTS") {
+      try {
+        await loadCurrentProfile(userAtStart, generation);
+      } catch (loadError) {
+        reportError(loadError);
+      }
     } else {
-      reportError(e);
+      reportError(error);
     }
   } finally {
     busy = false;
@@ -359,8 +372,9 @@ $("usernameForm").onsubmit = async e => {
   }
 };
 
-$("searchForm").onsubmit = async e => {
-  e.preventDefault();
+/* Поиск пользователя и отправка заявки. */
+$("searchForm").onsubmit = async event => {
+  event.preventDefault();
   if (!me) return;
 
   const userAtStart = me;
@@ -374,93 +388,126 @@ $("searchForm").onsubmit = async e => {
   }
 
   try {
-    const nameSnap = await getDoc(doc(db, "usernames", username));
+    const usernameSnap = await getDoc(doc(db, "usernames", username));
 
     if (me?.uid !== userAtStart.uid) return;
 
-    if (!nameSnap.exists()) {
+    if (!usernameSnap.exists()) {
       result.textContent = "Пользователь не найден.";
       return;
     }
 
-    const uid = nameSnap.data().uid;
+    const otherUid = usernameSnap.data().uid;
 
-    if (uid === userAtStart.uid) {
+    if (otherUid === userAtStart.uid) {
       result.textContent = "Это твой профиль 🙂";
       return;
     }
 
-    const p = await getProfile(uid);
-
+    const otherProfile = await getProfile(otherUid);
     if (me?.uid !== userAtStart.uid) return;
 
-    if (!p) {
+    if (!otherProfile) {
       result.textContent = "Профиль не найден.";
       return;
     }
 
-    const contact = await getDoc(
-      doc(db, "users", userAtStart.uid, "contacts", uid)
+    const contactSnap = await getDoc(
+      doc(db, "users", userAtStart.uid, "contacts", otherUid)
     );
 
     if (me?.uid !== userAtStart.uid) return;
 
-    if (contact.exists()) {
+    if (contactSnap.exists()) {
       result.appendChild(
-        makeRow(usernameLabel(p), "Написать", () => openChat(uid))
+        makeRow(usernameLabel(otherProfile), "Написать", () => openChat(otherUid))
       );
       return;
     }
 
-    const row = makeRow(usernameLabel(p), "Отправить запрос", async () => {
+    const row = makeRow(usernameLabel(otherProfile), "Отправить запрос", async () => {
       const button = row.querySelector("button");
-      if (button.disabled) return;
-
       button.disabled = true;
+      status("Отправляем заявку...");
 
       try {
         await addDoc(collection(db, "contactRequests"), {
           senderUid: userAtStart.uid,
-          recipientUid: uid,
+          recipientUid: otherUid,
           status: "pending",
           createdAt: serverTimestamp()
         });
 
-        status("Запрос отправлен пользователю " + usernameLabel(p) + ".");
+        status("Заявка отправлена пользователю " + usernameLabel(otherProfile) + ".");
         result.replaceChildren();
-      } catch (e) {
-        reportError(e);
+      } catch (error) {
+        reportError(error);
         button.disabled = false;
       }
     });
 
     result.appendChild(row);
-
-  } catch (e) {
-    reportError(e);
+  } catch (error) {
+    reportError(error);
   }
 };
 
-async function acceptRequest(requestSnap) {
-  if (!me || busy) return;
+/*
+ * ИСПРАВЛЕННОЕ ПРИНЯТИЕ ЗАЯВКИ.
+ * Не использует общий busy-флаг, который мог молча блокировать кнопку.
+ * Для каждой заявки есть собственная блокировка.
+ */
+async function acceptRequest(requestSnap, button) {
+  const requestId = requestSnap.id;
 
-  busy = true;
+  if (!me) {
+    status("Сначала войди в Chatly.");
+    return;
+  }
+
+  if (acceptingRequests.has(requestId)) {
+    status("Эта заявка уже обрабатывается...");
+    return;
+  }
+
+  const userAtStart = me;
+  acceptingRequests.add(requestId);
+  if (button) button.disabled = true;
+
+  status("Принимаем заявку в друзья...");
 
   try {
     const data = requestSnap.data();
 
-    if (data.recipientUid !== me.uid || data.status !== "pending") {
-      throw new Error("Этот запрос уже обработан.");
+    if (data.recipientUid !== userAtStart.uid) {
+      throw new Error("Эта заявка предназначена не тебе.");
     }
 
+    if (data.status !== "pending") {
+      status("Заявка уже обработана. Обнови страницу.");
+      return;
+    }
+
+    if (!data.senderUid || data.senderUid === userAtStart.uid) {
+      throw new Error("В заявке указан неправильный отправитель.");
+    }
+
+    /*
+     * Все три операции выполняются одной атомарной записью:
+     * 1. Заявка становится accepted.
+     * 2. Отправитель появляется в контактах получателя.
+     * 3. Получатель появляется в контактах отправителя.
+     */
     const batch = writeBatch(db);
 
-    batch.update(requestSnap.ref, { status: "accepted" });
+    batch.update(requestSnap.ref, {
+      status: "accepted"
+    });
 
     batch.set(
       doc(db, "users", data.senderUid, "contacts", data.recipientUid),
       {
-        requestId: requestSnap.id,
+        requestId: requestId,
         createdAt: serverTimestamp()
       }
     );
@@ -468,38 +515,48 @@ async function acceptRequest(requestSnap) {
     batch.set(
       doc(db, "users", data.recipientUid, "contacts", data.senderUid),
       {
-        requestId: requestSnap.id,
+        requestId: requestId,
         createdAt: serverTimestamp()
       }
     );
 
     await batch.commit();
 
-    status("Запрос принят! Контакт добавлен, можно писать.");
+    if (auth.currentUser?.uid === userAtStart.uid) {
+      status("✅ Заявка принята! Теперь пользователь есть в контактах.");
+    }
+  } catch (error) {
+    console.error("acceptRequest failed:", error);
 
-  } catch (e) {
-    reportError(e);
+    status("Не удалось принять заявку: " + friendlyError(error));
+
+    if (button) button.disabled = false;
   } finally {
-    busy = false;
+    acceptingRequests.delete(requestId);
   }
 }
 
-async function rejectRequest(requestSnap) {
+async function rejectRequest(requestSnap, button) {
+  if (!me) return;
+
+  if (button) button.disabled = true;
+
   try {
     const data = requestSnap.data();
 
-    if (!me || data.recipientUid !== me.uid || data.status !== "pending") {
-      throw new Error("Этот запрос уже обработан.");
+    if (data.recipientUid !== me.uid || data.status !== "pending") {
+      throw new Error("Эта заявка уже обработана.");
     }
 
     await updateDoc(requestSnap.ref, { status: "rejected" });
-    status("Запрос отклонён.");
-
-  } catch (e) {
-    reportError(e);
+    status("Заявка отклонена.");
+  } catch (error) {
+    reportError(error);
+    if (button) button.disabled = false;
   }
 }
 
+/* Входящие и отправленные заявки. */
 function watchRequests(uid, field, listId, incoming) {
   const q = query(
     collection(db, "contactRequests"),
@@ -508,17 +565,15 @@ function watchRequests(uid, field, listId, incoming) {
 
   let version = 0;
 
-  const stop = onSnapshot(q, async snap => {
+  const stop = onSnapshot(q, async snapshot => {
     const current = ++version;
     const list = $(listId);
     list.replaceChildren();
 
-    const pending = snap.docs.filter(d => d.data().status === "pending");
+    const pending = snapshot.docs.filter(item => item.data().status === "pending");
 
     if (!pending.length) {
-      list.textContent = incoming
-        ? "Нет новых запросов."
-        : "Нет ожидающих запросов.";
+      list.textContent = incoming ? "Нет новых запросов." : "Нет ожидающих запросов.";
       return;
     }
 
@@ -529,25 +584,35 @@ function watchRequests(uid, field, listId, incoming) {
       const otherUid = incoming ? data.senderUid : data.recipientUid;
 
       try {
-        const p = await getProfile(otherUid);
+        const otherProfile = await getProfile(otherUid);
 
         if (current !== version || me?.uid !== uid) return;
-        if (!p) continue;
+        if (!otherProfile) continue;
 
-        const row = incoming
-          ? makeRow(
-              usernameLabel(p),
-              "Принять",
-              () => acceptRequest(requestSnap),
-              "Отклонить",
-              () => rejectRequest(requestSnap)
-            )
-          : makeRow(usernameLabel(p), "Ожидает ответа", () => {});
+        let row;
+
+        if (incoming) {
+          row = makeRow(usernameLabel(otherProfile), "Принять", () => {});
+          const buttons = row.querySelectorAll("button");
+          const acceptButton = buttons[0];
+
+          acceptButton.onclick = () => acceptRequest(requestSnap, acceptButton);
+
+          const rejectButton = document.createElement("button");
+          rejectButton.type = "button";
+          rejectButton.className = "secondary";
+          rejectButton.textContent = "Отклонить";
+          rejectButton.onclick = () => rejectRequest(requestSnap, rejectButton);
+          row.appendChild(rejectButton);
+        } else {
+          row = makeRow(usernameLabel(otherProfile), "Ожидает ответа", () => {
+            status("Заявка ещё ожидает ответа.");
+          });
+        }
 
         rows.push(row);
-
-      } catch (e) {
-        if (current === version) reportError(e);
+      } catch (error) {
+        if (current === version) reportError(error);
       }
     }
 
@@ -556,45 +621,46 @@ function watchRequests(uid, field, listId, incoming) {
     list.replaceChildren(...rows);
 
     if (!rows.length) {
-      list.textContent = incoming
-        ? "Нет новых запросов."
-        : "Нет ожидающих запросов.";
+      list.textContent = incoming ? "Нет новых запросов." : "Нет ожидающих запросов.";
     }
-  }, reportError);
+  }, error => {
+    console.error("Requests listener:", error);
+    reportError(error);
+  });
 
   addListener(stop);
 }
 
+/* Контакты. */
 function watchContacts(uid) {
   let version = 0;
 
   const stop = onSnapshot(
     collection(db, "users", uid, "contacts"),
-    async snap => {
+    async snapshot => {
       const current = ++version;
       const list = $("contactsList");
       list.replaceChildren();
 
-      if (snap.empty) {
+      if (snapshot.empty) {
         list.textContent = "Контактов пока нет. Найди друга выше!";
         return;
       }
 
       const rows = [];
 
-      for (const item of snap.docs) {
+      for (const item of snapshot.docs) {
         try {
-          const p = await getProfile(item.id);
+          const otherProfile = await getProfile(item.id);
 
           if (current !== version || me?.uid !== uid) return;
-          if (!p) continue;
+          if (!otherProfile) continue;
 
           rows.push(
-            makeRow(usernameLabel(p), "Написать", () => openChat(item.id))
+            makeRow(usernameLabel(otherProfile), "Написать", () => openChat(item.id))
           );
-
-        } catch (e) {
-          if (current === version) reportError(e);
+        } catch (error) {
+          if (current === version) reportError(error);
         }
       }
 
@@ -602,16 +668,18 @@ function watchContacts(uid) {
 
       list.replaceChildren(...rows);
 
-      if (!rows.length) {
-        list.textContent = "Контактов пока нет.";
-      }
+      if (!rows.length) list.textContent = "Контактов пока нет.";
     },
-    reportError
+    error => {
+      console.error("Contacts listener:", error);
+      reportError(error);
+    }
   );
 
   addListener(stop);
 }
 
+/* Список уже созданных чатов. */
 function watchChats(uid) {
   const q = query(
     collection(db, "chats"),
@@ -620,34 +688,33 @@ function watchChats(uid) {
 
   let version = 0;
 
-  const stop = onSnapshot(q, async snap => {
+  const stop = onSnapshot(q, async snapshot => {
     const current = ++version;
     const list = $("chatsList");
     list.replaceChildren();
 
-    if (snap.empty) {
+    if (snapshot.empty) {
       list.textContent = "Пока нет чатов. Открой переписку из контактов.";
       return;
     }
 
     const rows = [];
 
-    for (const chat of snap.docs) {
+    for (const chat of snapshot.docs) {
       const otherUid = chat.data().members?.find(id => id !== uid);
       if (!otherUid) continue;
 
       try {
-        const p = await getProfile(otherUid);
+        const otherProfile = await getProfile(otherUid);
 
         if (current !== version || me?.uid !== uid) return;
-        if (!p) continue;
+        if (!otherProfile) continue;
 
         rows.push(
-          makeRow(usernameLabel(p), "Открыть", () => openChat(otherUid))
+          makeRow(usernameLabel(otherProfile), "Открыть", () => openChat(otherUid))
         );
-
-      } catch (e) {
-        if (current === version) reportError(e);
+      } catch (error) {
+        if (current === version) reportError(error);
       }
     }
 
@@ -658,11 +725,15 @@ function watchChats(uid) {
     if (!rows.length) {
       list.textContent = "Пока нет чатов. Открой переписку из контактов.";
     }
-  }, reportError);
+  }, error => {
+    console.error("Chats listener:", error);
+    reportError(error);
+  });
 
   addListener(stop);
 }
 
+/* Вход и выход: подписки очищаются, данные не удаляются. */
 onAuthStateChanged(auth, async user => {
   const generation = ++authGeneration;
 
@@ -672,48 +743,29 @@ onAuthStateChanged(auth, async user => {
   profile = null;
 
   $("searchResult").replaceChildren();
+
+  if (!user) {
+    showAuth();
+    status("Войди или зарегистрируйся.");
+    $("myUsername").textContent = "";
+    $("incomingList").textContent = "Войди, чтобы увидеть запросы.";
+    $("outgoingList").textContent = "Войди, чтобы увидеть запросы.";
+    $("contactsList").textContent = "Войди, чтобы увидеть контакты.";
+    $("chatsList").textContent = "Войди, чтобы увидеть чаты.";
+    return;
+  }
+
   $("incomingList").textContent = "Загрузка...";
   $("outgoingList").textContent = "Загрузка...";
   $("contactsList").textContent = "Загрузка...";
   $("chatsList").textContent = "Загрузка...";
 
-  if (!user) {
-    showAuth();
-    status("Войди или зарегистрируйся.");
-    return;
-  }
-
-  showApp();
-  status("Загружаем твой профиль...");
+  status("Загружаем профиль...");
 
   try {
-    const p = await getProfile(user.uid);
-
-    if (
-      generation !== authGeneration ||
-      auth.currentUser?.uid !== user.uid
-    ) return;
-
-    profile = p;
-
-    if (!p || typeof p.username !== "string") {
-      showSetup();
-      status("Выбери username для своего аккаунта.");
-      return;
-    }
-
-    showApp();
-    $("myUsername").textContent = usernameLabel(p);
-
-    watchRequests(user.uid, "recipientUid", "incomingList", true);
-    watchRequests(user.uid, "senderUid", "outgoingList", false);
-    watchContacts(user.uid);
-    watchChats(user.uid);
-
-    status("Chatly онлайн 💜");
-
-  } catch (e) {
-    if (generation === authGeneration) reportError(e);
+    await loadCurrentProfile(user, generation);
+  } catch (error) {
+    if (generation === authGeneration) reportError(error);
   }
 });
 </script>
