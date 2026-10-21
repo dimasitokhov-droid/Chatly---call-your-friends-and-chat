@@ -3,628 +3,749 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Chatly</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#f2f1fa;color:#25233b}
-header{background:#6757e8;color:white;padding:18px}
+body{margin:0;background:#f3f1fb;color:#28243d;font-family:Arial,sans-serif}
+header{background:#6757e8;color:#fff;padding:18px}
 header h1{margin:0 0 5px}
-main{max-width:700px;margin:auto;padding:15px}
-.card{background:white;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 3px 12px #2420440b}
-h2{font-size:19px;margin-top:0}
-input{width:100%;min-width:0;padding:12px;margin:7px 0;border:1px solid #d9d5ee;border-radius:10px;font-size:16px}
-button{border:0;border-radius:10px;padding:11px 13px;background:#6757e8;color:white;font-size:14px;cursor:pointer}
-button:disabled{opacity:.5}
-.secondary{background:#ece9ff;color:#5142c5}
-.line{display:flex;gap:8px;align-items:center}
+main{max-width:720px;margin:auto;padding:14px}
+.card{background:white;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 3px 14px #20174b0b}
+h2{font-size:19px;margin:0 0 12px}
+input{width:100%;min-width:0;padding:12px;border:1px solid #d9d5ed;border-radius:10px;font-size:16px;margin:6px 0}
+button{background:#6757e8;color:#fff;border:0;border-radius:10px;padding:11px 13px;font-size:14px;cursor:pointer}
+button:disabled{opacity:.55}
+.secondary{background:#ece9ff;color:#5141c4}
+.line{display:flex;align-items:center;gap:8px}
 .line input{flex:1}
 .line button{flex-shrink:0}
-.person{display:flex;align-items:center;gap:9px;padding:12px 0;border-bottom:1px solid #efedf7;flex-wrap:wrap}
+.person{display:flex;align-items:center;gap:8px;padding:12px 0;border-bottom:1px solid #efedf6;flex-wrap:wrap}
 .person-name{flex:1;min-width:100px;overflow-wrap:anywhere}
-.hint{font-size:13px;color:#77738c}
+.hint,.small{font-size:13px;color:#77728b}
 #status{overflow-wrap:anywhere}
-#chatMessages{height:35vh;min-height:180px;overflow-y:auto;padding:10px;background:#faf9ff;border-radius:12px;margin:12px 0}
-.bubble{margin:8px 0;padding:10px;background:#eae6ff;border-radius:12px;overflow-wrap:anywhere}
-.bubble.mine{background:#dff5e8}
-.small{font-size:12px;color:#716d83;margin-bottom:4px}
+#chatMessages{height:36vh;min-height:190px;overflow:auto;background:#faf9ff;border-radius:12px;padding:10px;margin:12px 0}
+.bubble{background:#eae6ff;border-radius:12px;padding:10px;margin:8px 0;overflow-wrap:anywhere;white-space:pre-wrap}
+.bubble.mine{background:#dcf5e7}
+.small{margin-bottom:5px}
 [hidden]{display:none!important}
 </style>
 </head>
 <body>
-<header><h1>💜 Chatly</h1><div>Твои друзья. Твои переписки.</div></header>
+<header>
+  <h1>💜 Chatly</h1>
+  <div>Твои друзья. Твои переписки.</div>
+</header>
+
 <main>
-<p id="status" role="status">Подключаемся...</p>
+<p id="status" role="status">Подключаемся к Chatly...</p>
 
 <section id="authCard" class="card" hidden>
-<h2 id="authTitle">Вход в Chatly</h2>
-<form id="authForm">
-<input id="email" type="email" placeholder="Email" autocomplete="email" maxlength="254" required>
-<input id="password" type="password" placeholder="Пароль" autocomplete="current-password" minlength="6" maxlength="128" required>
-<div class="line">
-<button id="authSubmit">Войти</button>
-<button id="authSwitch" class="secondary" type="button">Регистрация</button>
-</div>
-</form>
+  <h2 id="authTitle">Вход в Chatly</h2>
+  <form id="authForm">
+    <input id="email" type="email" placeholder="Email" autocomplete="email" required>
+    <input id="password" type="password" placeholder="Пароль" minlength="6" maxlength="128" autocomplete="current-password" required>
+    <div class="line">
+      <button id="authSubmit">Войти</button>
+      <button id="authSwitch" type="button" class="secondary">Регистрация</button>
+    </div>
+  </form>
 </section>
 
 <section id="setupCard" class="card" hidden>
-<h2>Создай свой username</h2>
-<p>Его увидят другие пользователи, email останется скрытым.</p>
-<form id="usernameForm">
-<input id="usernameInput" placeholder="Например, dima123" minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]{3,20}" required>
-<p class="hint">3–20 символов: латинские буквы, цифры и _</p>
-<button>Создать профиль</button>
-</form>
+  <h2>Создай username</h2>
+  <p>Другие пользователи смогут найти тебя по этому имени.</p>
+  <form id="usernameForm">
+    <input id="usernameInput" placeholder="Например, dima123" minlength="3" maxlength="20" pattern="[A-Za-z0-9_]{3,20}" required>
+    <p class="hint">От 3 до 20 символов: латинские буквы, цифры и _</p>
+    <button>Создать профиль</button>
+  </form>
 </section>
 
 <section id="app" hidden>
-<section class="card">
-<h2>👤 Мой профиль</h2>
-<p id="myUsername"></p>
-<button id="logout" class="secondary">Выйти</button>
-</section>
+  <section class="card">
+    <h2>👤 Мой профиль</h2>
+    <p id="myUsername"></p>
+    <button id="logout" class="secondary">Выйти</button>
+  </section>
 
-<section class="card">
-<h2>🔎 Найти друга</h2>
-<form id="searchForm" class="line">
-<input id="searchInput" placeholder="Username, например alex456" maxlength="20" required>
-<button>Найти</button>
-</form>
-<div id="searchResult"></div>
-</section>
+  <section class="card">
+    <h2>🔎 Найти друга</h2>
+    <form id="searchForm" class="line">
+      <input id="searchInput" placeholder="Username" maxlength="20" required>
+      <button>Найти</button>
+    </form>
+    <div id="searchResult"></div>
+  </section>
 
-<section class="card">
-<h2>📩 Входящие запросы</h2>
-<div id="incomingList">Загрузка...</div>
-</section>
+  <section class="card">
+    <h2>📩 Входящие запросы</h2>
+    <div id="incomingList">Загрузка...</div>
+  </section>
 
-<section class="card">
-<h2>📤 Отправленные запросы</h2>
-<div id="outgoingList">Загрузка...</div>
-</section>
+  <section class="card">
+    <h2>📤 Отправленные запросы</h2>
+    <div id="outgoingList">Загрузка...</div>
+  </section>
 
-<section class="card">
-<h2>👥 Мои контакты</h2>
-<div id="contactsList">Загрузка...</div>
-</section>
+  <section class="card">
+    <h2>👥 Мои контакты</h2>
+    <div id="contactsList">Загрузка...</div>
+  </section>
 
-<section class="card">
-<h2>💬 Мои чаты</h2>
-<div id="chatsList">Загрузка...</div>
-</section>
+  <section class="card">
+    <h2>💬 Мои чаты</h2>
+    <div id="chatsList">Загрузка...</div>
+  </section>
 
-<section id="conversation" class="card" hidden>
-<h2 id="conversationTitle">Личный чат</h2>
-<button id="closeChat" class="secondary">← Назад</button>
-<div id="chatMessages" aria-live="polite"></div>
-<form id="messageForm" class="line">
-<input id="messageInput" placeholder="Напиши сообщение..." maxlength="500" autocomplete="off" required>
-<button id="sendButton">➤</button>
-</form>
-<p class="hint">Личные сообщения доступны только участникам этого чата.</p>
-</section>
+  <section id="conversation" class="card" hidden>
+    <h2 id="conversationTitle">Личный чат</h2>
+    <button id="closeChat" class="secondary">← Назад</button>
+    <div id="chatMessages" aria-live="polite"></div>
+    <form id="messageForm" class="line">
+      <input id="messageInput" placeholder="Напиши сообщение..." maxlength="500" autocomplete="off" required>
+      <button id="sendButton">➤</button>
+    </form>
+  </section>
 </section>
 </main>
 
 <script type="module">
-import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import {
-  getAuth,onAuthStateChanged,createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,signOut
+  getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
+  signInWithEmailAndPassword, signOut
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import {
-  getFirestore,doc,getDoc,setDoc,addDoc,updateDoc,collection,
-  query,where,onSnapshot,runTransaction,writeBatch,serverTimestamp
+  getFirestore, doc, getDoc, addDoc, updateDoc, collection,
+  query, where, onSnapshot, runTransaction, writeBatch, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
-const firebaseConfig={
-  apiKey:"AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
-  authDomain:"chatly-19613.firebaseapp.com",
-  projectId:"chatly-19613",
-  storageBucket:"chatly-19613.firebasestorage.app",
-  messagingSenderId:"1080401916394",
-  appId:"1:1080401916394:web:815e66c78ced380b4c8293",
-  measurementId:"G-WJ2NPP9T45"
+const firebaseConfig = {
+  apiKey: "AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
+  authDomain: "chatly-19613.firebaseapp.com",
+  projectId: "chatly-19613",
+  storageBucket: "chatly-19613.firebasestorage.app",
+  messagingSenderId: "1080401916394",
+  appId: "1:1080401916394:web:815e66c78ced380b4c8293",
+  measurementId: "G-WJ2NPP9T45"
 };
 
-const appFirebase=initializeApp(firebaseConfig);
-const auth=getAuth(appFirebase);
-const db=getFirestore(appFirebase);
-const $=id=>document.getElementById(id);
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+const $ = id => document.getElementById(id);
 
-let me=null,profile=null,registering=false,busy=false;
-let activeChat=null,activeOther=null,stopMessages=null,stops=[];
+let me = null;
+let profile = null;
+let registering = false;
+let busy = false;
+let activeChat = null;
+let activeOther = null;
+let stopMessages = null;
+let stops = [];
+let requestRenderVersions = {};
 
-function status(text){$("status").textContent=text;}
+function status(text) {
+  $("status").textContent = text;
+}
 
-function reportError(e){
-  console.error("Chatly error:",e);
-  const errors={
-    "auth/email-already-in-use":"Этот email уже зарегистрирован.",
-    "auth/invalid-email":"Проверь email.",
-    "auth/weak-password":"Пароль должен содержать минимум 6 символов.",
-    "auth/invalid-credential":"Неверный email или пароль.",
-    "auth/too-many-requests":"Слишком много попыток. Попробуй позже.",
-    "auth/operation-not-allowed":"Включи Email/Password в Firebase Authentication.",
-    "permission-denied":"Firebase отклонил действие. Проверь Firestore Rules и консоль браузера.",
-    "already-exists":"Такой документ уже существует.",
-    "unavailable":"Проблема с интернетом. Попробуй ещё раз."
+function reportError(e) {
+  console.error("Chatly error:", e);
+  const code = (e?.code || "").replace("firestore/", "");
+  const messages = {
+    "permission-denied": "Firebase запретил действие. Проверь Firestore Rules.",
+    "auth/email-already-in-use": "Этот email уже зарегистрирован.",
+    "auth/invalid-email": "Проверь правильность email.",
+    "auth/weak-password": "Пароль должен содержать минимум 6 символов.",
+    "auth/invalid-credential": "Неверный email или пароль.",
+    "auth/too-many-requests": "Слишком много попыток. Попробуй позже.",
+    "auth/operation-not-allowed": "Включи Email/Password в Firebase Authentication.",
+    "unavailable": "Нет соединения с Firebase. Проверь интернет."
   };
-  status(errors[e.code]||("Ошибка: "+(e.message||e.code||"не удалось выполнить действие")));
+  status(messages[code] || ("Ошибка: " + (e?.message || code || "неизвестная ошибка")));
 }
 
-function unsubAll(){
-  stops.forEach(fn=>fn());
-  stops=[];
-  if(stopMessages)stopMessages();
-  stopMessages=null;
+function unsubAll() {
+  stops.forEach(fn => fn());
+  stops = [];
+  if (stopMessages) stopMessages();
+  stopMessages = null;
 }
 
-function addListener(fn){stops.push(fn);}
-
-function showAuth(){
-  $("authCard").hidden=false;
-  $("setupCard").hidden=true;
-  $("app").hidden=true;
+function addListener(fn) {
+  stops.push(fn);
 }
 
-function showApp(){
-  $("authCard").hidden=true;
-  $("setupCard").hidden=true;
-  $("app").hidden=false;
+function showAuth() {
+  $("authCard").hidden = false;
+  $("setupCard").hidden = true;
+  $("app").hidden = true;
 }
 
-function makeRow(label,buttonText,action,secondText=null,secondAction=null){
-  const row=document.createElement("div");
-  row.className="person";
+function showApp() {
+  $("authCard").hidden = true;
+  $("setupCard").hidden = true;
+  $("app").hidden = false;
+}
 
-  const name=document.createElement("div");
-  name.className="person-name";
-  name.textContent=label;
+function usernameLabel(p) {
+  return "@" + p.username;
+}
+
+function makeRow(label, buttonText, action, secondText = null, secondAction = null) {
+  const row = document.createElement("div");
+  row.className = "person";
+
+  const name = document.createElement("div");
+  name.className = "person-name";
+  name.textContent = label;
   row.appendChild(name);
 
-  const b=document.createElement("button");
-  b.textContent=buttonText;
-  b.addEventListener("click",action);
-  row.appendChild(b);
+  const button = document.createElement("button");
+  button.textContent = buttonText;
+  button.addEventListener("click", action);
+  row.appendChild(button);
 
-  if(secondText){
-    const b2=document.createElement("button");
-    b2.className="secondary";
-    b2.textContent=secondText;
-    b2.addEventListener("click",secondAction);
-    row.appendChild(b2);
+  if (secondText) {
+    const second = document.createElement("button");
+    second.className = "secondary";
+    second.textContent = secondText;
+    second.addEventListener("click", secondAction);
+    row.appendChild(second);
   }
+
   return row;
 }
 
-async function getProfile(uid){
-  const s=await getDoc(doc(db,"users",uid));
-  return s.exists()?s.data():null;
+async function getProfile(uid) {
+  const snap = await getDoc(doc(db, "users", uid));
+  return snap.exists() ? snap.data() : null;
 }
 
-function usernameLabel(p){return "@"+p.username;}
-
-$("authSwitch").onclick=()=>{
-  registering=!registering;
-  $("authTitle").textContent=registering?"Регистрация":"Вход в Chatly";
-  $("authSubmit").textContent=registering?"Создать аккаунт":"Войти";
-  $("authSwitch").textContent=registering?"У меня есть аккаунт":"Регистрация";
-  $("password").autocomplete=registering?"new-password":"current-password";
+$("authSwitch").onclick = () => {
+  registering = !registering;
+  $("authTitle").textContent = registering ? "Регистрация" : "Вход в Chatly";
+  $("authSubmit").textContent = registering ? "Создать аккаунт" : "Войти";
+  $("authSwitch").textContent = registering ? "У меня есть аккаунт" : "Регистрация";
+  $("password").autocomplete = registering ? "new-password" : "current-password";
 };
 
-$("authForm").onsubmit=async e=>{
+$("authForm").onsubmit = async e => {
   e.preventDefault();
-  if(busy)return;
-  busy=true;
-  $("authSubmit").disabled=true;
-  try{
-    if(registering){
+  if (busy) return;
+  busy = true;
+  $("authSubmit").disabled = true;
+
+  try {
+    if (registering) {
       await createUserWithEmailAndPassword(
-        auth,$("email").value.trim(),$("password").value
+        auth, $("email").value.trim(), $("password").value
       );
-    }else{
+    } else {
       await signInWithEmailAndPassword(
-        auth,$("email").value.trim(),$("password").value
+        auth, $("email").value.trim(), $("password").value
       );
     }
-  }catch(err){
-    reportError(err);
-  }finally{
-    busy=false;
-    $("authSubmit").disabled=false;
+  } catch (e) {
+    reportError(e);
+  } finally {
+    busy = false;
+    $("authSubmit").disabled = false;
   }
 };
 
-$("logout").onclick=async()=>{
+$("logout").onclick = async () => {
   unsubAll();
-  try{
+  try {
     await signOut(auth);
     status("Ты вышел из Chatly.");
-  }catch(e){reportError(e);}
+  } catch (e) {
+    reportError(e);
+  }
 };
 
-$("usernameForm").onsubmit=async e=>{
+$("usernameForm").onsubmit = async e => {
   e.preventDefault();
-  if(!me||busy)return;
-  busy=true;
+  if (!me || busy) return;
+  busy = true;
 
-  const username=$("usernameInput").value.trim().toLowerCase();
-  if(!/^[a-z0-9_]{3,20}$/.test(username)){
-    status("Username должен содержать 3–20 латинских букв, цифр или _.");
-    busy=false;
+  const username = $("usernameInput").value.trim().toLowerCase();
+
+  if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+    status("Username: от 3 до 20 латинских букв, цифр или _.");
+    busy = false;
     return;
   }
 
-  try{
-    const userRef=doc(db,"users",me.uid);
-    const nameRef=doc(db,"usernames",username);
+  try {
+    const userRef = doc(db, "users", me.uid);
+    const nameRef = doc(db, "usernames", username);
 
-    await runTransaction(db,async tx=>{
-      const [u,n]=await Promise.all([
-        tx.get(userRef),tx.get(nameRef)
+    await runTransaction(db, async tx => {
+      const [u, n] = await Promise.all([
+        tx.get(userRef),
+        tx.get(nameRef)
       ]);
-      if(u.exists())throw new Error("Профиль уже существует. Перезагрузи страницу.");
-      if(n.exists())throw new Error("USERNAME_TAKEN");
 
-      tx.set(nameRef,{uid:me.uid});
-      tx.set(userRef,{username,createdAt:serverTimestamp()});
+      if (u.exists()) throw new Error("Профиль уже существует.");
+      if (n.exists()) throw new Error("USERNAME_TAKEN");
+
+      tx.set(nameRef, { uid: me.uid });
+      tx.set(userRef, {
+        username,
+        createdAt: serverTimestamp()
+      });
     });
+
     status("Профиль создан!");
-  }catch(e){
-    if(e.message==="USERNAME_TAKEN"){
-      status("Это имя занято. Выбери другое.");
-    }else{
+  } catch (e) {
+    if (e.message === "USERNAME_TAKEN") {
+      status("Этот username занят. Выбери другой.");
+    } else {
       reportError(e);
     }
-  }finally{
-    busy=false;
+  } finally {
+    busy = false;
   }
 };
 
-$("searchForm").onsubmit=async e=>{
+$("searchForm").onsubmit = async e => {
   e.preventDefault();
-  if(!me)return;
+  if (!me) return;
 
-  const username=$("searchInput").value.trim().replace(/^@/,"").toLowerCase();
-  const result=$("searchResult");
+  const username = $("searchInput").value.trim().replace(/^@/, "").toLowerCase();
+  const result = $("searchResult");
   result.replaceChildren();
 
-  if(!/^[a-z0-9_]{3,20}$/.test(username)){
-    result.textContent="Введи username из 3–20 символов.";
+  if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+    result.textContent = "Введи username из 3–20 символов.";
     return;
   }
 
-  try{
-    const n=await getDoc(doc(db,"usernames",username));
-    if(!n.exists()){
-      result.textContent="Пользователь не найден.";
+  try {
+    const nameSnap = await getDoc(doc(db, "usernames", username));
+
+    if (!nameSnap.exists()) {
+      result.textContent = "Пользователь не найден.";
       return;
     }
 
-    const uid=n.data().uid;
-    if(uid===me.uid){
-      result.textContent="Это твой профиль 🙂";
+    const uid = nameSnap.data().uid;
+
+    if (uid === me.uid) {
+      result.textContent = "Это твой профиль 🙂";
       return;
     }
 
-    const p=await getProfile(uid);
-    if(!p){
-      result.textContent="Профиль не найден.";
+    const p = await getProfile(uid);
+    if (!p) {
+      result.textContent = "Профиль не найден.";
       return;
     }
 
-    const contact=await getDoc(doc(db,"users",me.uid,"contacts",uid));
-    if(contact.exists()){
-      result.appendChild(makeRow(usernameLabel(p),"Написать",()=>openChat(uid)));
+    const contact = await getDoc(doc(db, "users", me.uid, "contacts", uid));
+
+    if (contact.exists()) {
+      result.appendChild(makeRow(usernameLabel(p), "Написать", () => openChat(uid)));
       return;
     }
 
-    const button=makeRow(usernameLabel(p),"Отправить запрос",async()=>{
-      if(button.dataset.sending==="yes")return;
-      button.dataset.sending="yes";
+    const row = makeRow(usernameLabel(p), "Отправить запрос", async () => {
+      const button = row.querySelector("button");
+      if (button.disabled) return;
+      button.disabled = true;
 
-      const sendButton=button.querySelector("button");
-      sendButton.disabled=true;
-
-      try{
-        // Не читаем всю коллекцию перед отправкой.
-        // Создаём только один запрос с полями, разрешёнными Rules.
-        await addDoc(collection(db,"contactRequests"),{
-          senderUid:me.uid,
-          recipientUid:uid,
-          status:"pending",
-          createdAt:serverTimestamp()
+      try {
+        // Записываем только один документ. Предварительный запрос getDocs
+        // не нужен и не должен блокировать отправку.
+        await addDoc(collection(db, "contactRequests"), {
+          senderUid: me.uid,
+          recipientUid: uid,
+          status: "pending",
+          createdAt: serverTimestamp()
         });
 
-        status("Запрос отправлен пользователю "+usernameLabel(p)+".");
+        status("Запрос отправлен пользователю " + usernameLabel(p) + ".");
         result.replaceChildren();
-      }catch(err){
-        reportError(err);
-        button.dataset.sending="no";
-        sendButton.disabled=false;
+      } catch (e) {
+        reportError(e);
+        button.disabled = false;
       }
     });
 
-    result.appendChild(button);
-  }catch(err){
-    reportError(err);
+    result.appendChild(row);
+  } catch (e) {
+    reportError(e);
   }
 };
 
-async function acceptRequest(requestDoc){
-  if(!me||busy)return;
-  busy=true;
+async function acceptRequest(requestSnap) {
+  if (!me || busy) return;
+  busy = true;
 
-  try{
-    const data=requestDoc.data();
-    if(data.recipientUid!==me.uid||data.status!=="pending"){
+  try {
+    const data = requestSnap.data();
+
+    if (data.recipientUid !== me.uid || data.status !== "pending") {
       throw new Error("Этот запрос уже обработан.");
     }
 
-    const batch=writeBatch(db);
-    batch.update(requestDoc.ref,{status:"accepted"});
+    const batch = writeBatch(db);
 
-    batch.set(doc(db,"users",data.senderUid,"contacts",data.recipientUid),{
-      requestId:requestDoc.id,
-      createdAt:serverTimestamp()
+    batch.update(requestSnap.ref, {
+      status: "accepted"
     });
 
-    batch.set(doc(db,"users",data.recipientUid,"contacts",data.senderUid),{
-      requestId:requestDoc.id,
-      createdAt:serverTimestamp()
+    batch.set(doc(db, "users", data.senderUid, "contacts", data.recipientUid), {
+      requestId: requestSnap.id,
+      createdAt: serverTimestamp()
     });
 
+    batch.set(doc(db, "users", data.recipientUid, "contacts", data.senderUid), {
+      requestId: requestSnap.id,
+      createdAt: serverTimestamp()
+    });
+
+    // Статус запроса и оба контакта записываются атомарно.
     await batch.commit();
-    status("Запрос принят! Теперь вы можете переписываться.");
-  }catch(e){
+
+    status("Запрос принят! Контакт добавлен, можно писать.");
+  } catch (e) {
     reportError(e);
-  }finally{
-    busy=false;
+  } finally {
+    busy = false;
   }
 }
 
-async function rejectRequest(requestDoc){
-  try{
-    if(requestDoc.data().recipientUid!==me.uid){
-      throw new Error("Нельзя обработать чужой запрос.");
+async function rejectRequest(requestSnap) {
+  try {
+    const data = requestSnap.data();
+    if (data.recipientUid !== me.uid || data.status !== "pending") {
+      throw new Error("Этот запрос уже обработан.");
     }
-    await updateDoc(requestDoc.ref,{status:"rejected"});
+
+    await updateDoc(requestSnap.ref, { status: "rejected" });
     status("Запрос отклонён.");
-  }catch(e){
+  } catch (e) {
     reportError(e);
   }
 }
 
-function watchRequests(uid,field,listId,incoming){
-  const q=query(collection(db,"contactRequests"),where(field,"==",uid));
+function watchRequests(uid, field, listId, incoming) {
+  const q = query(
+    collection(db, "contactRequests"),
+    where(field, "==", uid)
+  );
 
-  addListener(onSnapshot(q,async snap=>{
-    const list=$(listId);
+  let version = 0;
+  requestRenderVersions[listId] = 0;
+
+  const stop = onSnapshot(q, async snap => {
+    const current = ++version;
+    requestRenderVersions[listId] = current;
+    const list = $(listId);
     list.replaceChildren();
 
-    const requests=snap.docs.filter(d=>d.data().status==="pending");
-    if(!requests.length){
-      list.textContent=incoming?"Нет новых запросов.":"Нет ожидающих запросов.";
+    // Принятые и отклонённые запросы остаются в базе,
+    // но отображаются только ожидающие запросы.
+    const pending = snap.docs.filter(d => d.data().status === "pending");
+
+    if (!pending.length) {
+      list.textContent = incoming ? "Нет новых запросов." : "Нет ожидающих запросов.";
       return;
     }
 
-    for(const r of requests){
-      const d=r.data();
-      try{
-        const otherUid=incoming?d.senderUid:d.recipientUid;
-        const p=await getProfile(otherUid);
-        if(!p)continue;
+    const rows = [];
 
-        if(incoming){
-          list.appendChild(makeRow(
-            usernameLabel(p),"Принять",()=>acceptRequest(r),
-            "Отклонить",()=>rejectRequest(r)
-          ));
-        }else{
-          list.appendChild(makeRow(usernameLabel(p),"Ожидает ответа",()=>{}));
+    for (const requestSnap of pending) {
+      const data = requestSnap.data();
+      const otherUid = incoming ? data.senderUid : data.recipientUid;
+
+      try {
+        const p = await getProfile(otherUid);
+        if (current !== version) return;
+        if (!p) continue;
+
+        const row = incoming
+          ? makeRow(
+              usernameLabel(p),
+              "Принять",
+              () => acceptRequest(requestSnap),
+              "Отклонить",
+              () => rejectRequest(requestSnap)
+            )
+          : makeRow(usernameLabel(p), "Ожидает ответа", () => {});
+
+        rows.push(row);
+      } catch (e) {
+        if (current === version) reportError(e);
+      }
+    }
+
+    if (current !== version) return;
+
+    list.replaceChildren(...rows);
+
+    if (!rows.length) {
+      list.textContent = incoming ? "Нет новых запросов." : "Нет ожидающих запросов.";
+    }
+  }, reportError);
+
+  addListener(stop);
+}
+
+function watchContacts(uid) {
+  const stop = onSnapshot(
+    collection(db, "users", uid, "contacts"),
+    async snap => {
+      const list = $("contactsList");
+      list.replaceChildren();
+
+      if (snap.empty) {
+        list.textContent = "Контактов пока нет. Найди друга выше!";
+        return;
+      }
+
+      const version = snap.docs.map(d => d.id).join("|");
+
+      for (const item of snap.docs) {
+        try {
+          const p = await getProfile(item.id);
+          if (!p) continue;
+
+          const row = makeRow(
+            usernameLabel(p),
+            "Написать",
+            () => openChat(item.id)
+          );
+
+          // Не добавляем кнопку, если список уже изменился.
+          const now = $("contactsList");
+          if (now.isConnected && version === snap.docs.map(d => d.id).join("|")) {
+            list.appendChild(row);
+          }
+        } catch (e) {
+          reportError(e);
         }
-      }catch(e){reportError(e);}
-    }
-  },reportError));
+      }
+    },
+    reportError
+  );
+
+  addListener(stop);
 }
 
-function watchContacts(uid){
-  addListener(onSnapshot(collection(db,"users",uid,"contacts"),async snap=>{
-    const list=$("contactsList");
-    list.replaceChildren();
-
-    if(snap.empty){
-      list.textContent="Контактов пока нет. Найди друга выше!";
-      return;
-    }
-
-    for(const item of snap.docs){
-      try{
-        const p=await getProfile(item.id);
-        if(!p)continue;
-        list.appendChild(makeRow(usernameLabel(p),"Написать",()=>openChat(item.id)));
-      }catch(e){reportError(e);}
-    }
-  },reportError));
+function makeChatId(a, b) {
+  return [a, b].sort().join("__");
 }
 
-function chatIdFor(a,b){return [a,b].sort().join("__");}
+async function openChat(otherUid) {
+  if (!me || !otherUid || otherUid === me.uid) return;
 
-async function openChat(otherUid){
-  if(!me||!otherUid||otherUid===me.uid)return;
-
-  try{
+  try {
     status("Открываем личный чат...");
-    const contact=await getDoc(doc(db,"users",me.uid,"contacts",otherUid));
 
-    if(!contact.exists()){
-      status("Сначала нужно принять запрос и добавить друг друга в контакты.");
+    const contact = await getDoc(doc(db, "users", me.uid, "contacts", otherUid));
+
+    if (!contact.exists()) {
+      status("Сначала нужно принять запрос и добавить пользователя в контакты.");
       return;
     }
 
-    const other=await getProfile(otherUid);
-    if(!other)throw new Error("Профиль собеседника не найден.");
+    const other = await getProfile(otherUid);
+    if (!other) throw new Error("Профиль собеседника не найден.");
 
-    const members=[me.uid,otherUid].sort();
-    const chatId=chatIdFor(me.uid,otherUid);
-    const chatRef=doc(db,"chats",chatId);
+    const chatId = makeChatId(me.uid, otherUid);
+    const chatRef = doc(db, "chats", chatId);
+    const members = [me.uid, otherUid].sort();
 
-    await runTransaction(db,async tx=>{
-      const c=await tx.get(chatRef);
-      if(!c.exists()){
-        tx.set(chatRef,{members,createdAt:serverTimestamp()});
-      }else if(
-        !c.data().members.includes(me.uid)||
-        !c.data().members.includes(otherUid)
-      ){
-        throw new Error("Участники чата не совпадают.");
+    // Правила должны разрешать get для ещё не существующего чата
+    // и проверять участников уже существующего чата.
+    await runTransaction(db, async tx => {
+      const chatSnap = await tx.get(chatRef);
+
+      if (chatSnap.exists()) {
+        const data = chatSnap.data();
+
+        if (
+          !Array.isArray(data.members) ||
+          !data.members.includes(me.uid) ||
+          !data.members.includes(otherUid)
+        ) {
+          throw new Error("Участники чата не совпадают.");
+        }
+      } else {
+        tx.set(chatRef, {
+          members,
+          createdAt: serverTimestamp()
+        });
       }
     });
 
-    activeChat=chatId;
-    activeOther=otherUid;
-    $("conversationTitle").textContent="Переписка с "+usernameLabel(other);
-    $("conversation").hidden=false;
+    activeChat = chatId;
+    activeOther = otherUid;
+
+    $("conversationTitle").textContent = "Переписка с " + usernameLabel(other);
+    $("conversation").hidden = false;
     $("chatMessages").replaceChildren();
 
-    if(stopMessages)stopMessages();
+    if (stopMessages) stopMessages();
 
-    const messagesRef=collection(db,"chats",chatId,"messages");
-    stopMessages=onSnapshot(messagesRef,snap=>{
-      const list=$("chatMessages");
+    const messagesRef = collection(db, "chats", chatId, "messages");
+
+    stopMessages = onSnapshot(messagesRef, snap => {
+      const list = $("chatMessages");
       list.replaceChildren();
 
-      const sorted=snap.docs.sort((a,b)=>
-        (a.data().createdAt?.toMillis?.()||0)-
-        (b.data().createdAt?.toMillis?.()||0)
-      );
+      const messages = snap.docs.slice().sort((a, b) => {
+        const ta = a.data().createdAt?.toMillis?.() || 0;
+        const tb = b.data().createdAt?.toMillis?.() || 0;
+        return ta - tb;
+      });
 
-      const fragment=document.createDocumentFragment();
-      for(const d of sorted){
-        const data=d.data();
-        const bubble=document.createElement("div");
-        bubble.className="bubble"+(data.uid===me.uid?" mine":"");
+      const fragment = document.createDocumentFragment();
 
-        const meta=document.createElement("div");
-        meta.className="small";
-        meta.textContent=data.uid===me.uid?"Ты":usernameLabel(other);
+      for (const message of messages) {
+        const data = message.data();
+        const bubble = document.createElement("div");
+        bubble.className = "bubble" + (data.uid === me.uid ? " mine" : "");
 
-        const text=document.createElement("div");
-        text.textContent=data.text||"";
+        const meta = document.createElement("div");
+        meta.className = "small";
+        meta.textContent = data.uid === me.uid ? "Ты" : usernameLabel(other);
 
-        bubble.append(meta,text);
+        const text = document.createElement("div");
+        text.textContent = data.text || "";
+
+        bubble.append(meta, text);
         fragment.appendChild(bubble);
       }
 
       list.appendChild(fragment);
-      list.scrollTop=list.scrollHeight;
-    },reportError);
+      list.scrollTop = list.scrollHeight;
+    }, reportError);
 
     status("Личный чат открыт.");
-  }catch(e){
+  } catch (e) {
     reportError(e);
   }
 }
 
-function watchChats(uid){
-  const q=query(collection(db,"chats"),where("members","array-contains",uid));
+function watchChats(uid) {
+  const q = query(
+    collection(db, "chats"),
+    where("members", "array-contains", uid)
+  );
 
-  addListener(onSnapshot(q,async snap=>{
-    const list=$("chatsList");
+  const stop = onSnapshot(q, async snap => {
+    const list = $("chatsList");
     list.replaceChildren();
 
-    if(snap.empty){
-      list.textContent="Пока нет чатов. Открой переписку из контактов.";
+    if (snap.empty) {
+      list.textContent = "Пока нет чатов. Открой переписку из контактов.";
       return;
     }
 
-    for(const d of snap.docs){
-      const otherUid=d.data().members.find(id=>id!==uid);
-      if(!otherUid)continue;
+    for (const chat of snap.docs) {
+      const otherUid = chat.data().members?.find(id => id !== uid);
+      if (!otherUid) continue;
 
-      try{
-        const p=await getProfile(otherUid);
-        if(!p)continue;
-        list.appendChild(makeRow(usernameLabel(p),"Открыть",()=>openChat(otherUid)));
-      }catch(e){reportError(e);}
+      try {
+        const p = await getProfile(otherUid);
+        if (!p) continue;
+
+        list.appendChild(
+          makeRow(usernameLabel(p), "Открыть", () => openChat(otherUid))
+        );
+      } catch (e) {
+        reportError(e);
+      }
     }
-  },reportError));
+  }, reportError);
+
+  addListener(stop);
 }
 
-$("closeChat").onclick=()=>{
-  $("conversation").hidden=true;
-  if(stopMessages)stopMessages();
-  stopMessages=null;
-  activeChat=null;
-  activeOther=null;
+$("closeChat").onclick = () => {
+  $("conversation").hidden = true;
+
+  if (stopMessages) stopMessages();
+  stopMessages = null;
+  activeChat = null;
+  activeOther = null;
 };
 
-$("messageForm").onsubmit=async e=>{
+$("messageForm").onsubmit = async e => {
   e.preventDefault();
-  if(!me||!activeChat||busy)return;
+  if (!me || !activeChat || !activeOther || busy) return;
 
-  const text=$("messageInput").value.trim();
-  if(!text||text.length>500)return;
+  const text = $("messageInput").value.trim();
+  if (!text || text.length > 500) return;
 
-  busy=true;
-  $("sendButton").disabled=true;
+  busy = true;
+  $("sendButton").disabled = true;
 
-  try{
-    const contact=await getDoc(doc(db,"users",me.uid,"contacts",activeOther));
-    if(!contact.exists())throw new Error("Контакт больше недоступен.");
+  try {
+    const contact = await getDoc(
+      doc(db, "users", me.uid, "contacts", activeOther)
+    );
 
-    await addDoc(collection(db,"chats",activeChat,"messages"),{
+    if (!contact.exists()) {
+      throw new Error("Контакт больше недоступен.");
+    }
+
+    await addDoc(collection(db, "chats", activeChat, "messages"), {
       text,
-      uid:me.uid,
-      createdAt:serverTimestamp()
+      uid: me.uid,
+      createdAt: serverTimestamp()
     });
 
-    $("messageInput").value="";
-  }catch(e){
+    $("messageInput").value = "";
+  } catch (e) {
     reportError(e);
-  }finally{
-    busy=false;
-    $("sendButton").disabled=false;
+  } finally {
+    busy = false;
+    $("sendButton").disabled = false;
   }
 };
 
-onAuthStateChanged(auth,async user=>{
+onAuthStateChanged(auth, async user => {
   unsubAll();
-  me=user;
-  profile=null;
-  activeChat=null;
-  activeOther=null;
-  $("conversation").hidden=true;
 
-  if(!user){
+  me = user;
+  profile = null;
+  activeChat = null;
+  activeOther = null;
+  $("conversation").hidden = true;
+
+  if (!user) {
     showAuth();
     status("Войди или зарегистрируйся.");
     return;
   }
 
-  try{
-    profile=await getProfile(user.uid);
+  try {
+    profile = await getProfile(user.uid);
 
-    if(!profile){
-      $("authCard").hidden=true;
-      $("setupCard").hidden=false;
-      $("app").hidden=true;
+    if (!profile) {
+      $("authCard").hidden = true;
+      $("setupCard").hidden = false;
+      $("app").hidden = true;
       status("Выбери уникальный username.");
       return;
     }
 
     showApp();
-    $("myUsername").textContent=usernameLabel(profile);
+    $("myUsername").textContent = usernameLabel(profile);
 
-    watchRequests(user.uid,"recipientUid","incomingList",true);
-    watchRequests(user.uid,"senderUid","outgoingList",false);
+    watchRequests(user.uid, "recipientUid", "incomingList", true);
+    watchRequests(user.uid, "senderUid", "outgoingList", false);
     watchContacts(user.uid);
     watchChats(user.uid);
 
     status("Chatly онлайн 💜");
-  }catch(e){
+  } catch (e) {
     reportError(e);
   }
 });
