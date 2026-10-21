@@ -1,0 +1,171 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatly</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f1f4f9;
+      color: #20243a;
+    }
+    header {
+      background: #6757e8;
+      color: white;
+      padding: 24px 20px;
+      border-radius: 0 0 24px 24px;
+    }
+    header h1 { margin: 0 0 8px; }
+    header p { margin: 0; opacity: .85; }
+    main { padding: 18px; max-width: 600px; margin: auto; }
+    .chat {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: white;
+      padding: 16px;
+      margin-bottom: 12px;
+      border-radius: 16px;
+      box-shadow: 0 3px 12px #20243a0b;
+    }
+    .avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #e4e0ff;
+      display: grid;
+      place-items: center;
+      font-size: 24px;
+    }
+    .details { flex: 1; }
+    .details p { margin: 5px 0 0; color: #777b8d; }
+    .badge { color: #6757e8; font-size: 13px; }
+    #messages {
+      display: none;
+      background: white;
+      padding: 16px;
+      border-radius: 16px;
+      margin-bottom: 12px;
+    }
+    #history { min-height: 100px; }
+    .bubble {
+      background: #eeeaff;
+      padding: 10px 12px;
+      border-radius: 14px;
+      margin: 8px 0;
+      overflow-wrap: anywhere;
+    }
+    .composer { display: flex; gap: 8px; margin-top: 12px; }
+    input {
+      min-width: 0;
+      flex: 1;
+      padding: 13px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      font-size: 16px;
+    }
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      background: #6757e8;
+      color: white;
+      font-size: 16px;
+    }
+    .back { margin-bottom: 12px; }
+    footer { text-align: center; color: #888; padding: 20px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>💬 Chatly</h1>
+    <p>Call your friends and chat</p>
+  </header>
+
+  <main>
+    <section id="list">
+      <h2>Твои чаты</h2>
+      <div class="chat" onclick="openChat('Алекс')">
+        <div class="avatar">😎</div>
+        <div class="details">
+          <strong>Алекс</strong>
+          <p>Привет! Как дела?</p>
+        </div>
+        <span class="badge">Чат</span>
+      </div>
+      <div class="chat" onclick="openChat('Маша')">
+        <div class="avatar">😊</div>
+        <div class="details">
+          <strong>Маша</strong>
+          <p>Увидимся сегодня!</p>
+        </div>
+        <span class="badge">Чат</span>
+      </div>
+      <div class="chat" onclick="openChat('Даня')">
+        <div class="avatar">🎮</div>
+        <div class="details">
+          <strong>Даня</strong>
+          <p>Пойдём играть?</p>
+        </div>
+        <span class="badge">Чат</span>
+      </div>
+    </section>
+
+    <section id="messages">
+      <button class="back" onclick="closeChat()">← Назад</button>
+      <h2 id="chatTitle">Чат</h2>
+      <div id="history"></div>
+      <form class="composer" onsubmit="sendMessage(event)">
+        <input id="messageInput" placeholder="Напиши сообщение..." autocomplete="off" required>
+        <button type="submit">➤</button>
+      </form>
+    </section>
+  </main>
+
+  <footer>Chatly · Твоя территория общения 💜</footer>
+
+  <script>
+    let currentChat = '';
+    const conversations = {};
+
+    function openChat(name) {
+      currentChat = name;
+      document.getElementById('list').style.display = 'none';
+      document.getElementById('messages').style.display = 'block';
+      document.getElementById('chatTitle').textContent = name;
+      renderMessages();
+    }
+
+    function closeChat() {
+      document.getElementById('messages').style.display = 'none';
+      document.getElementById('list').style.display = 'block';
+    }
+
+    function sendMessage(event) {
+      event.preventDefault();
+      const input = document.getElementById('messageInput');
+      const message = input.value.trim();
+      if (!message) return;
+      conversations[currentChat] ||= [];
+      conversations[currentChat].push(message);
+      input.value = '';
+      renderMessages();
+    }
+
+    function renderMessages() {
+      const history = document.getElementById('history');
+      history.replaceChildren();
+      (conversations[currentChat] || []).forEach(message => {
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.textContent = message;
+        history.appendChild(bubble);
+      });
+    }
+  </script>
+</body>
+</html>
