@@ -24,10 +24,6 @@ button:disabled{opacity:.55}
 .person-name{flex:1;min-width:100px;overflow-wrap:anywhere}
 .hint,.small{font-size:13px;color:#77728b}
 #status{overflow-wrap:anywhere}
-#chatMessages{height:36vh;min-height:190px;overflow:auto;background:#faf9ff;border-radius:12px;padding:10px;margin:12px 0}
-.bubble{background:#eae6ff;border-radius:12px;padding:10px;margin:8px 0;overflow-wrap:anywhere;white-space:pre-wrap}
-.bubble.mine{background:#dcf5e7}
-.small{margin-bottom:5px}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -97,28 +93,33 @@ button:disabled{opacity:.55}
     <h2>💬 Мои чаты</h2>
     <div id="chatsList">Загрузка...</div>
   </section>
-
-  <section id="conversation" class="card" hidden>
-    <h2 id="conversationTitle">Личный чат</h2>
-    <button id="closeChat" class="secondary" type="button">← Назад</button>
-    <div id="chatMessages" aria-live="polite"></div>
-    <form id="messageForm" class="line">
-      <input id="messageInput" placeholder="Напиши сообщение..." maxlength="500" autocomplete="off" required>
-      <button id="sendButton" type="submit">➤</button>
-    </form>
-  </section>
 </section>
 </main>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+
 import {
-  getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
-  signInWithEmailAndPassword, signOut
+  getAuth,
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
 import {
-  getFirestore, doc, getDoc, addDoc, updateDoc, collection,
-  query, where, onSnapshot, runTransaction, writeBatch, serverTimestamp
+  getFirestore,
+  doc,
+  getDoc,
+  addDoc,
+  updateDoc,
+  collection,
+  query,
+  where,
+  onSnapshot,
+  runTransaction,
+  writeBatch,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -140,12 +141,8 @@ let me = null;
 let profile = null;
 let registering = false;
 let busy = false;
-let activeChat = null;
-let activeOther = null;
-let stopMessages = null;
 let stops = [];
 let authGeneration = 0;
-let profileLoading = false;
 
 function status(text) {
   $("status").textContent = text;
@@ -153,9 +150,11 @@ function status(text) {
 
 function reportError(e) {
   console.error("Chatly error:", e);
+
   const code = (e?.code || "").replace("firestore/", "");
+
   const messages = {
-    "permission-denied": "Firebase запретил действие. Проверь опубликованные Firestore Rules.",
+    "permission-denied": "Firebase запретил действие. Проверь Firestore Rules.",
     "auth/email-already-in-use": "Этот email уже зарегистрирован. Переключись на «Войти».",
     "auth/invalid-email": "Проверь правильность email.",
     "auth/weak-password": "Пароль должен содержать минимум 6 символов.",
@@ -165,6 +164,7 @@ function reportError(e) {
     "auth/network-request-failed": "Нет соединения. Проверь интернет.",
     "unavailable": "Нет соединения с Firebase. Проверь интернет."
   };
+
   status(messages[code] || ("Ошибка: " + (e?.message || code || "неизвестная ошибка")));
 }
 
@@ -173,11 +173,6 @@ function unsubAll() {
     try { fn(); } catch (e) { console.warn(e); }
   });
   stops = [];
-
-  if (stopMessages) {
-    stopMessages();
-    stopMessages = null;
-  }
 }
 
 function addListener(fn) {
@@ -188,14 +183,12 @@ function showAuth() {
   $("authCard").hidden = false;
   $("setupCard").hidden = true;
   $("app").hidden = true;
-  $("conversation").hidden = true;
 }
 
 function showSetup() {
   $("authCard").hidden = true;
   $("setupCard").hidden = false;
   $("app").hidden = true;
-  $("conversation").hidden = true;
 }
 
 function showApp() {
@@ -241,46 +234,25 @@ async function getProfile(uid) {
 }
 
 /*
- * Важное исправление:
- * После создания профиля сразу открываем приложение.
- * Раньше код только показывал сообщение, и экран настройки
- * мог оставаться открытым до следующего входа.
+ * ПЕРЕХОД НА ОТДЕЛЬНУЮ СТРАНИЦУ ЧАТА.
+ * UID собеседника передаётся в адресе:
+ * chat.html?uid=UID_СОБЕСЕДНИКА
  */
-async function loadCurrentProfile(user, generation = authGeneration) {
-  if (!user || user.uid !== me?.uid) return;
-
-  profileLoading = true;
-  status("Загружаем твой профиль...");
-
-  try {
-    const p = await getProfile(user.uid);
-
-    // Не позволяем старой операции менять экран после выхода
-    // или переключения на другой аккаунт.
-    if (generation !== authGeneration || auth.currentUser?.uid !== user.uid) return;
-
-    profile = p;
-
-    if (!p || typeof p.username !== "string") {
-      showSetup();
-      status("Профиль не найден. Создай username для этого аккаунта.");
-      return;
-    }
-
-    showApp();
-    $("myUsername").textContent = usernameLabel(p);
-
-    watchRequests(user.uid, "recipientUid", "incomingList", true);
-    watchRequests(user.uid, "senderUid", "outgoingList", false);
-    watchContacts(user.uid);
-    watchChats(user.uid);
-
-    status("Chatly онлайн 💜");
-  } catch (e) {
-    if (generation === authGeneration) reportError(e);
-  } finally {
-    profileLoading = false;
+function openChat(otherUid) {
+  if (!me) {
+    status("Сначала войди в Chatly.");
+    return;
   }
+
+  if (!otherUid || otherUid === me.uid) {
+    status("Не удалось определить собеседника.");
+    return;
+  }
+
+  const chatUrl = new URL("chat.html", window.location.href);
+  chatUrl.searchParams.set("uid", otherUid);
+
+  window.location.href = chatUrl.href;
 }
 
 $("authSwitch").onclick = () => {
@@ -297,7 +269,6 @@ $("authForm").onsubmit = async e => {
 
   busy = true;
   $("authSubmit").disabled = true;
-  status(registering ? "Создаём аккаунт..." : "Входим в аккаунт...");
 
   try {
     const email = $("email").value.trim();
@@ -306,7 +277,6 @@ $("authForm").onsubmit = async e => {
     if (registering) {
       await createUserWithEmailAndPassword(auth, email, password);
     } else {
-      // ВХОД в существующий аккаунт, а не создание нового.
       await signInWithEmailAndPassword(auth, email, password);
     }
   } catch (e) {
@@ -317,10 +287,6 @@ $("authForm").onsubmit = async e => {
   }
 };
 
-/*
- * Выход только завершает сеанс.
- * Не удаляем пользователя Firebase и документы Firestore.
- */
 $("logout").onclick = async () => {
   if (busy) return;
 
@@ -328,10 +294,8 @@ $("logout").onclick = async () => {
   $("logout").disabled = true;
 
   try {
-    status("Выходим из аккаунта...");
     await signOut(auth);
-    // Экран входа переключит onAuthStateChanged.
-    // Никакие аккаунты или документы здесь не удаляются.
+    status("Ты вышел из Chatly.");
   } catch (e) {
     reportError(e);
   } finally {
@@ -379,17 +343,13 @@ $("usernameForm").onsubmit = async e => {
 
     if (auth.currentUser?.uid !== userAtStart.uid) return;
 
-    $("usernameInput").value = "";
-    status("Профиль создан! Открываем Chatly...");
+    status("Профиль создан!");
 
-    // Главное исправление: после регистрации профиля не нужно
-    // выходить и входить снова, чтобы увидеть приложение.
-    await loadCurrentProfile(userAtStart, authGeneration);
   } catch (e) {
     if (e.message === "USERNAME_TAKEN") {
       status("Этот username занят. Выбери другой.");
     } else if (e.message === "PROFILE_ALREADY_EXISTS") {
-      await loadCurrentProfile(userAtStart, authGeneration);
+      status("Профиль уже существует. Перезагрузи страницу.");
     } else {
       reportError(e);
     }
@@ -431,6 +391,7 @@ $("searchForm").onsubmit = async e => {
     }
 
     const p = await getProfile(uid);
+
     if (me?.uid !== userAtStart.uid) return;
 
     if (!p) {
@@ -438,11 +399,16 @@ $("searchForm").onsubmit = async e => {
       return;
     }
 
-    const contact = await getDoc(doc(db, "users", userAtStart.uid, "contacts", uid));
+    const contact = await getDoc(
+      doc(db, "users", userAtStart.uid, "contacts", uid)
+    );
+
     if (me?.uid !== userAtStart.uid) return;
 
     if (contact.exists()) {
-      result.appendChild(makeRow(usernameLabel(p), "Написать", () => openChat(uid)));
+      result.appendChild(
+        makeRow(usernameLabel(p), "Написать", () => openChat(uid))
+      );
       return;
     }
 
@@ -469,6 +435,7 @@ $("searchForm").onsubmit = async e => {
     });
 
     result.appendChild(row);
+
   } catch (e) {
     reportError(e);
   }
@@ -480,10 +447,9 @@ async function acceptRequest(requestSnap) {
   busy = true;
 
   try {
-    const userAtStart = me;
     const data = requestSnap.data();
 
-    if (data.recipientUid !== userAtStart.uid || data.status !== "pending") {
+    if (data.recipientUid !== me.uid || data.status !== "pending") {
       throw new Error("Этот запрос уже обработан.");
     }
 
@@ -491,21 +457,26 @@ async function acceptRequest(requestSnap) {
 
     batch.update(requestSnap.ref, { status: "accepted" });
 
-    batch.set(doc(db, "users", data.senderUid, "contacts", data.recipientUid), {
-      requestId: requestSnap.id,
-      createdAt: serverTimestamp()
-    });
+    batch.set(
+      doc(db, "users", data.senderUid, "contacts", data.recipientUid),
+      {
+        requestId: requestSnap.id,
+        createdAt: serverTimestamp()
+      }
+    );
 
-    batch.set(doc(db, "users", data.recipientUid, "contacts", data.senderUid), {
-      requestId: requestSnap.id,
-      createdAt: serverTimestamp()
-    });
+    batch.set(
+      doc(db, "users", data.recipientUid, "contacts", data.senderUid),
+      {
+        requestId: requestSnap.id,
+        createdAt: serverTimestamp()
+      }
+    );
 
     await batch.commit();
 
-    if (me?.uid === userAtStart.uid) {
-      status("Запрос принят! Контакт добавлен, можно писать.");
-    }
+    status("Запрос принят! Контакт добавлен, можно писать.");
+
   } catch (e) {
     reportError(e);
   } finally {
@@ -514,17 +485,16 @@ async function acceptRequest(requestSnap) {
 }
 
 async function rejectRequest(requestSnap) {
-  if (!me) return;
-
   try {
     const data = requestSnap.data();
 
-    if (data.recipientUid !== me.uid || data.status !== "pending") {
+    if (!me || data.recipientUid !== me.uid || data.status !== "pending") {
       throw new Error("Этот запрос уже обработан.");
     }
 
     await updateDoc(requestSnap.ref, { status: "rejected" });
     status("Запрос отклонён.");
+
   } catch (e) {
     reportError(e);
   }
@@ -546,7 +516,9 @@ function watchRequests(uid, field, listId, incoming) {
     const pending = snap.docs.filter(d => d.data().status === "pending");
 
     if (!pending.length) {
-      list.textContent = incoming ? "Нет новых запросов." : "Нет ожидающих запросов.";
+      list.textContent = incoming
+        ? "Нет новых запросов."
+        : "Нет ожидающих запросов.";
       return;
     }
 
@@ -573,6 +545,7 @@ function watchRequests(uid, field, listId, incoming) {
           : makeRow(usernameLabel(p), "Ожидает ответа", () => {});
 
         rows.push(row);
+
       } catch (e) {
         if (current === version) reportError(e);
       }
@@ -583,7 +556,9 @@ function watchRequests(uid, field, listId, incoming) {
     list.replaceChildren(...rows);
 
     if (!rows.length) {
-      list.textContent = incoming ? "Нет новых запросов." : "Нет ожидающих запросов.";
+      list.textContent = incoming
+        ? "Нет новых запросов."
+        : "Нет ожидающих запросов.";
     }
   }, reportError);
 
@@ -610,12 +585,14 @@ function watchContacts(uid) {
       for (const item of snap.docs) {
         try {
           const p = await getProfile(item.id);
+
           if (current !== version || me?.uid !== uid) return;
           if (!p) continue;
 
           rows.push(
             makeRow(usernameLabel(p), "Написать", () => openChat(item.id))
           );
+
         } catch (e) {
           if (current === version) reportError(e);
         }
@@ -633,111 +610,6 @@ function watchContacts(uid) {
   );
 
   addListener(stop);
-}
-
-function makeChatId(a, b) {
-  return [a, b].sort().join("__");
-}
-
-async function openChat(otherUid) {
-  if (!me || !otherUid || otherUid === me.uid) return;
-
-  const userAtStart = me;
-
-  try {
-    status("Открываем личный чат...");
-
-    const contact = await getDoc(
-      doc(db, "users", userAtStart.uid, "contacts", otherUid)
-    );
-
-    if (me?.uid !== userAtStart.uid) return;
-
-    if (!contact.exists()) {
-      status("Сначала добавь пользователя в контакты.");
-      return;
-    }
-
-    const other = await getProfile(otherUid);
-    if (me?.uid !== userAtStart.uid) return;
-    if (!other) throw new Error("Профиль собеседника не найден.");
-
-    const chatId = makeChatId(userAtStart.uid, otherUid);
-    const chatRef = doc(db, "chats", chatId);
-    const members = [userAtStart.uid, otherUid].sort();
-
-    await runTransaction(db, async tx => {
-      const chatSnap = await tx.get(chatRef);
-
-      if (chatSnap.exists()) {
-        const data = chatSnap.data();
-
-        if (
-          !Array.isArray(data.members) ||
-          !data.members.includes(userAtStart.uid) ||
-          !data.members.includes(otherUid)
-        ) {
-          throw new Error("Участники чата не совпадают.");
-        }
-      } else {
-        tx.set(chatRef, {
-          members,
-          createdAt: serverTimestamp()
-        });
-      }
-    });
-
-    if (me?.uid !== userAtStart.uid) return;
-
-    activeChat = chatId;
-    activeOther = otherUid;
-
-    $("conversationTitle").textContent = "Переписка с " + usernameLabel(other);
-    $("conversation").hidden = false;
-    $("chatMessages").replaceChildren();
-
-    if (stopMessages) stopMessages();
-
-    const messagesRef = collection(db, "chats", chatId, "messages");
-
-    stopMessages = onSnapshot(messagesRef, snap => {
-      if (me?.uid !== userAtStart.uid || activeChat !== chatId) return;
-
-      const list = $("chatMessages");
-      list.replaceChildren();
-
-      const messages = snap.docs.slice().sort((a, b) => {
-        const ta = a.data().createdAt?.toMillis?.() || 0;
-        const tb = b.data().createdAt?.toMillis?.() || 0;
-        return ta - tb;
-      });
-
-      const fragment = document.createDocumentFragment();
-
-      for (const message of messages) {
-        const data = message.data();
-        const bubble = document.createElement("div");
-        bubble.className = "bubble" + (data.uid === userAtStart.uid ? " mine" : "");
-
-        const meta = document.createElement("div");
-        meta.className = "small";
-        meta.textContent = data.uid === userAtStart.uid ? "Ты" : usernameLabel(other);
-
-        const text = document.createElement("div");
-        text.textContent = data.text || "";
-
-        bubble.append(meta, text);
-        fragment.appendChild(bubble);
-      }
-
-      list.appendChild(fragment);
-      list.scrollTop = list.scrollHeight;
-    }, reportError);
-
-    status("Личный чат открыт.");
-  } catch (e) {
-    reportError(e);
-  }
 }
 
 function watchChats(uid) {
@@ -766,12 +638,14 @@ function watchChats(uid) {
 
       try {
         const p = await getProfile(otherUid);
+
         if (current !== version || me?.uid !== uid) return;
         if (!p) continue;
 
         rows.push(
           makeRow(usernameLabel(p), "Открыть", () => openChat(otherUid))
         );
+
       } catch (e) {
         if (current === version) reportError(e);
       }
@@ -789,60 +663,6 @@ function watchChats(uid) {
   addListener(stop);
 }
 
-$("closeChat").onclick = () => {
-  $("conversation").hidden = true;
-
-  if (stopMessages) stopMessages();
-  stopMessages = null;
-  activeChat = null;
-  activeOther = null;
-};
-
-$("messageForm").onsubmit = async e => {
-  e.preventDefault();
-
-  if (!me || !activeChat || !activeOther || busy) return;
-
-  const userAtStart = me;
-  const chatAtStart = activeChat;
-  const otherAtStart = activeOther;
-  const text = $("messageInput").value.trim();
-
-  if (!text || text.length > 500) return;
-
-  busy = true;
-  $("sendButton").disabled = true;
-
-  try {
-    const contact = await getDoc(
-      doc(db, "users", userAtStart.uid, "contacts", otherAtStart)
-    );
-
-    if (me?.uid !== userAtStart.uid || activeChat !== chatAtStart) return;
-    if (!contact.exists()) throw new Error("Контакт больше недоступен.");
-
-    await addDoc(collection(db, "chats", chatAtStart, "messages"), {
-      text,
-      uid: userAtStart.uid,
-      createdAt: serverTimestamp()
-    });
-
-    if (me?.uid === userAtStart.uid && activeChat === chatAtStart) {
-      $("messageInput").value = "";
-    }
-  } catch (e) {
-    reportError(e);
-  } finally {
-    busy = false;
-    $("sendButton").disabled = false;
-  }
-};
-
-/*
- * Главный обработчик входа и выхода.
- * При выходе чистит слушатели и интерфейс, но не удаляет
- * аккаунт, профиль, контакты или сообщения из базы.
- */
 onAuthStateChanged(auth, async user => {
   const generation = ++authGeneration;
 
@@ -850,11 +670,7 @@ onAuthStateChanged(auth, async user => {
 
   me = user;
   profile = null;
-  activeChat = null;
-  activeOther = null;
-  profileLoading = false;
 
-  $("conversation").hidden = true;
   $("searchResult").replaceChildren();
   $("incomingList").textContent = "Загрузка...";
   $("outgoingList").textContent = "Загрузка...";
@@ -863,28 +679,26 @@ onAuthStateChanged(auth, async user => {
 
   if (!user) {
     showAuth();
-    status("Ты вышел из Chatly. Войди с прежним email и паролем.");
+    status("Войди или зарегистрируйся.");
     return;
   }
 
-  $("authCard").hidden = true;
-  $("setupCard").hidden = true;
-  $("app").hidden = true;
-
-  status("Выполняется вход...");
+  showApp();
+  status("Загружаем твой профиль...");
 
   try {
     const p = await getProfile(user.uid);
 
-    // Если пользователь успел выйти или сменить аккаунт,
-    // старый запрос не должен переключать текущий экран.
-    if (generation !== authGeneration || auth.currentUser?.uid !== user.uid) return;
+    if (
+      generation !== authGeneration ||
+      auth.currentUser?.uid !== user.uid
+    ) return;
 
     profile = p;
 
     if (!p || typeof p.username !== "string") {
       showSetup();
-      status("У аккаунта пока нет профиля. Создай username.");
+      status("Выбери username для своего аккаунта.");
       return;
     }
 
@@ -897,6 +711,7 @@ onAuthStateChanged(auth, async user => {
     watchChats(user.uid);
 
     status("Chatly онлайн 💜");
+
   } catch (e) {
     if (generation === authGeneration) reportError(e);
   }
