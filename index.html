@@ -1,773 +1,1019 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Chatly</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;background:#f3f1fb;color:#28243d;font-family:Arial,sans-serif}
-header{background:#6757e8;color:white;padding:18px}
-header h1{margin:0 0 5px}
-main{max-width:720px;margin:auto;padding:14px}
-.card{background:white;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 3px 14px #20174b0b}
-h2{font-size:19px;margin:0 0 12px}
-input{width:100%;min-width:0;padding:12px;border:1px solid #d9d5ed;border-radius:10px;font-size:16px;margin:6px 0}
-button{background:#6757e8;color:white;border:0;border-radius:10px;padding:11px 13px;font-size:14px;cursor:pointer}
-button:disabled{opacity:.55;cursor:wait}
-.secondary{background:#ece9ff;color:#5141c4}
-.line{display:flex;align-items:center;gap:8px}
-.line input{flex:1}
-.person{display:flex;align-items:center;gap:8px;padding:12px 0;border-bottom:1px solid #efedf6;flex-wrap:wrap}
-.person-name{flex:1;min-width:100px;overflow-wrap:anywhere}
-.hint,.small{font-size:13px;color:#77728b}
-#status{overflow-wrap:anywhere;line-height:1.5}
-[hidden]{display:none!important}
-</style>
-</head>
-<body>
-<header>
-  <h1>💜 Chatly</h1>
-  <div>Твои друзья. Твои переписки.</div>
-</header>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101522">
+  <title>Chatly — общайся с друзьями</title>
 
-<main>
-<p id="status" role="status">Подключаемся к Chatly...</p>
-
-<section id="authCard" class="card" hidden>
-  <h2 id="authTitle">Вход в Chatly</h2>
-  <form id="authForm">
-    <input id="email" type="email" placeholder="Email" autocomplete="email" required>
-    <input id="password" type="password" placeholder="Пароль" minlength="6" maxlength="128" autocomplete="current-password" required>
-    <div class="line">
-      <button id="authSubmit" type="submit">Войти</button>
-      <button id="authSwitch" type="button" class="secondary">Регистрация</button>
-    </div>
-  </form>
-</section>
-
-<section id="setupCard" class="card" hidden>
-  <h2>Создай username</h2>
-  <p>Другие пользователи смогут найти тебя по этому имени.</p>
-  <form id="usernameForm">
-    <input id="usernameInput" placeholder="Например, dima123" minlength="3" maxlength="20" pattern="[A-Za-z0-9_]{3,20}" required>
-    <p class="hint">От 3 до 20 символов: латинские буквы, цифры и _</p>
-    <button id="usernameSubmit" type="submit">Создать профиль</button>
-  </form>
-</section>
-
-<section id="app" hidden>
-  <section class="card">
-    <h2>👤 Мой профиль</h2>
-    <p id="myUsername"></p>
-    <button id="logout" class="secondary" type="button">Выйти</button>
-  </section>
-
-  <section class="card">
-    <h2>🔎 Найти друга</h2>
-    <form id="searchForm" class="line">
-      <input id="searchInput" placeholder="Username" maxlength="20" required>
-      <button type="submit">Найти</button>
-    </form>
-    <div id="searchResult"></div>
-  </section>
-
-  <section class="card">
-    <h2>📩 Входящие запросы</h2>
-    <div id="incomingList">Загрузка...</div>
-  </section>
-
-  <section class="card">
-    <h2>📤 Отправленные запросы</h2>
-    <div id="outgoingList">Загрузка...</div>
-  </section>
-
-  <section class="card">
-    <h2>👥 Мои контакты</h2>
-    <div id="contactsList">Загрузка...</div>
-  </section>
-
-  <section class="card">
-    <h2>💬 Мои чаты</h2>
-    <div id="chatsList">Загрузка...</div>
-  </section>
-</section>
-</main>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import {
-  getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
-  signInWithEmailAndPassword, signOut
-} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-import {
-  getFirestore, doc, getDoc, addDoc, updateDoc, collection,
-  query, where, onSnapshot, runTransaction, writeBatch, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
-  authDomain: "chatly-19613.firebaseapp.com",
-  projectId: "chatly-19613",
-  storageBucket: "chatly-19613.firebasestorage.app",
-  messagingSenderId: "1080401916394",
-  appId: "1:1080401916394:web:815e66c78ced380b4c8293",
-  measurementId: "G-WJ2NPP9T45"
-};
-
-const firebaseApp = initializeApp(firebaseConfig);
-const auth = getAuth(firebaseApp);
-const db = getFirestore(firebaseApp);
-const $ = id => document.getElementById(id);
-
-let me = null;
-let profile = null;
-let registering = false;
-let busy = false;
-let authGeneration = 0;
-let stops = [];
-const acceptingRequests = new Set();
-
-function status(text) {
-  $("status").textContent = text;
-}
-
-function reportError(error) {
-  console.error("Chatly error:", error);
-
-  const code = (error?.code || "").replace("firestore/", "");
-  const messages = {
-    "permission-denied": "Firebase запретил действие. Проверь Firestore Rules.",
-    "auth/email-already-in-use": "Этот email уже зарегистрирован. Переключись на «Войти».",
-    "auth/invalid-email": "Проверь правильность email.",
-    "auth/weak-password": "Пароль должен содержать минимум 6 символов.",
-    "auth/invalid-credential": "Неверный email или пароль.",
-    "auth/too-many-requests": "Слишком много попыток. Попробуй позже.",
-    "auth/operation-not-allowed": "Включи Email/Password в Firebase Authentication.",
-    "auth/network-request-failed": "Нет соединения. Проверь интернет.",
-    "unavailable": "Нет соединения с Firebase. Проверь интернет."
-  };
-
-  status(messages[code] || ("Ошибка: " + (error?.message || code || "неизвестная ошибка")));
-}
-
-function friendlyError(error) {
-  const code = (error?.code || "").replace("firestore/", "");
-  const messages = {
-    "permission-denied": "Firebase отказал в доступе. Проверь правила Firestore.",
-    "unavailable": "Нет соединения с Firebase. Проверь интернет."
-  };
-  return messages[code] || error?.message || code || "Неизвестная ошибка";
-}
-
-function unsubAll() {
-  stops.forEach(stop => {
-    try { stop(); } catch (error) { console.warn(error); }
-  });
-  stops = [];
-}
-
-function addListener(stop) {
-  stops.push(stop);
-}
-
-function showAuth() {
-  $("authCard").hidden = false;
-  $("setupCard").hidden = true;
-  $("app").hidden = true;
-}
-
-function showSetup() {
-  $("authCard").hidden = true;
-  $("setupCard").hidden = false;
-  $("app").hidden = true;
-}
-
-function showApp() {
-  $("authCard").hidden = true;
-  $("setupCard").hidden = true;
-  $("app").hidden = false;
-}
-
-function usernameLabel(userProfile) {
-  return "@" + userProfile.username;
-}
-
-function makeRow(label, buttonText, action, secondText = null, secondAction = null) {
-  const row = document.createElement("div");
-  row.className = "person";
-
-  const name = document.createElement("div");
-  name.className = "person-name";
-  name.textContent = label;
-  row.appendChild(name);
-
-  const button = document.createElement("button");
-  button.type = "button";
-  button.textContent = buttonText;
-  button.addEventListener("click", action);
-  row.appendChild(button);
-
-  if (secondText) {
-    const second = document.createElement("button");
-    second.type = "button";
-    second.className = "secondary";
-    second.textContent = secondText;
-    second.addEventListener("click", secondAction);
-    row.appendChild(second);
-  }
-
-  return row;
-}
-
-async function getProfile(uid) {
-  const snap = await getDoc(doc(db, "users", uid));
-  return snap.exists() ? snap.data() : null;
-}
-
-/* Открываем отдельную страницу переписки. */
-function openChat(otherUid) {
-  if (!me) {
-    status("Сначала войди в Chatly.");
-    return;
-  }
-
-  if (!otherUid || otherUid === me.uid) {
-    status("Не удалось определить собеседника.");
-    return;
-  }
-
-  const url = new URL("chat.html", window.location.href);
-  url.searchParams.set("uid", otherUid);
-  window.location.href = url.href;
-}
-
-/* После загрузки профиля подключаем списки только один раз. */
-async function loadCurrentProfile(user, generation) {
-  const p = await getProfile(user.uid);
-
-  if (generation !== authGeneration || auth.currentUser?.uid !== user.uid) {
-    return;
-  }
-
-  profile = p;
-
-  if (!p || typeof p.username !== "string") {
-    showSetup();
-    status("Создай username для своего аккаунта.");
-    return;
-  }
-
-  showApp();
-  $("myUsername").textContent = usernameLabel(p);
-
-  watchRequests(user.uid, "recipientUid", "incomingList", true);
-  watchRequests(user.uid, "senderUid", "outgoingList", false);
-  watchContacts(user.uid);
-  watchChats(user.uid);
-
-  status("Chatly онлайн 💜");
-}
-
-$("authSwitch").onclick = () => {
-  registering = !registering;
-  $("authTitle").textContent = registering ? "Регистрация" : "Вход в Chatly";
-  $("authSubmit").textContent = registering ? "Создать аккаунт" : "Войти";
-  $("authSwitch").textContent = registering ? "У меня есть аккаунт" : "Регистрация";
-  $("password").autocomplete = registering ? "new-password" : "current-password";
-};
-
-$("authForm").onsubmit = async event => {
-  event.preventDefault();
-  if (busy) return;
-
-  busy = true;
-  $("authSubmit").disabled = true;
-  status(registering ? "Создаём аккаунт..." : "Входим в аккаунт...");
-
-  try {
-    const email = $("email").value.trim();
-    const password = $("password").value;
-
-    if (registering) {
-      await createUserWithEmailAndPassword(auth, email, password);
-    } else {
-      await signInWithEmailAndPassword(auth, email, password);
+  <style>
+    * {
+      box-sizing: border-box;
     }
-  } catch (error) {
-    reportError(error);
-  } finally {
-    busy = false;
-    $("authSubmit").disabled = false;
-  }
-};
 
-$("logout").onclick = async () => {
-  try {
-    await signOut(auth);
-    status("Ты вышел из Chatly.");
-  } catch (error) {
-    reportError(error);
-  }
-};
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #101522;
+      color: #f5f7ff;
+      font-family: Arial, sans-serif;
+    }
 
-/* Создание профиля с проверкой уникальности username. */
-$("usernameForm").onsubmit = async event => {
-  event.preventDefault();
+    button, input {
+      font: inherit;
+    }
 
-  if (!me || busy) return;
+    button {
+      cursor: pointer;
+    }
 
-  const userAtStart = me;
-  const generation = authGeneration;
-  const username = $("usernameInput").value.trim().toLowerCase();
+    .container {
+      width: min(100% - 28px, 760px);
+      margin: 0 auto;
+      padding: 24px 0 50px;
+    }
 
-  if (!/^[a-z0-9_]{3,20}$/.test(username)) {
-    status("Username: от 3 до 20 латинских букв, цифр или _.");
-    return;
-  }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
 
-  busy = true;
-  $("usernameSubmit").disabled = true;
-  status("Создаём профиль...");
+    .logo {
+      font-size: 30px;
+      font-weight: 800;
+      color: #8b9cff;
+      letter-spacing: -1px;
+    }
 
-  try {
-    const userRef = doc(db, "users", userAtStart.uid);
-    const usernameRef = doc(db, "usernames", username);
+    .subtitle {
+      color: #aab3c8;
+      margin-top: 5px;
+      font-size: 14px;
+    }
 
-    await runTransaction(db, async tx => {
-      const [userSnap, usernameSnap] = await Promise.all([
-        tx.get(userRef),
-        tx.get(usernameRef)
-      ]);
+    .panel {
+      background: #191f30;
+      border: 1px solid #2b344b;
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
 
-      if (userSnap.exists()) throw new Error("PROFILE_ALREADY_EXISTS");
-      if (usernameSnap.exists()) throw new Error("USERNAME_TAKEN");
+    h2 {
+      font-size: 19px;
+      margin: 0 0 16px;
+    }
 
-      tx.set(usernameRef, { uid: userAtStart.uid });
-      tx.set(userRef, {
-        username,
+    input {
+      display: block;
+      width: 100%;
+      padding: 13px 14px;
+      background: #101522;
+      color: white;
+      border: 1px solid #35405b;
+      border-radius: 11px;
+      outline: none;
+      margin-bottom: 10px;
+    }
+
+    input:focus {
+      border-color: #8797ff;
+    }
+
+    button {
+      border: 0;
+      border-radius: 11px;
+      padding: 12px 15px;
+      background: #8293ff;
+      color: #101522;
+      font-weight: 700;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .secondary {
+      background: #2b344b;
+      color: #f5f7ff;
+    }
+
+    .danger {
+      background: #482936;
+      color: #ffd9df;
+    }
+
+    .full {
+      width: 100%;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .row input {
+      min-width: 0;
+      margin-bottom: 0;
+      flex: 1;
+    }
+
+    .row button {
+      flex-shrink: 0;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .muted {
+      color: #aab3c8;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .message {
+      padding: 12px;
+      margin: 12px 0;
+      border-radius: 10px;
+      background: #222b40;
+      color: #dce2ff;
+      overflow-wrap: anywhere;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .person {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 0;
+      border-bottom: 1px solid #2b344b;
+    }
+
+    .person:last-child {
+      border-bottom: 0;
+    }
+
+    .person-info {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .username {
+      font-weight: 700;
+    }
+
+    .person-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      justify-content: flex-end;
+    }
+
+    .person-actions button {
+      padding: 9px 11px;
+      font-size: 13px;
+    }
+
+    .status {
+      font-size: 14px;
+      line-height: 1.5;
+      color: #aab3c8;
+      margin-top: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .status.error {
+      color: #ff9eaa;
+    }
+
+    .status.success {
+      color: #8fe0b1;
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        width: min(100% - 20px, 760px);
+        padding-top: 16px;
+      }
+
+      .panel {
+        padding: 16px;
+      }
+
+      .person {
+        align-items: flex-start;
+      }
+
+      .person-actions {
+        flex-direction: column;
+      }
+
+      .row {
+        flex-wrap: wrap;
+      }
+
+      .row input,
+      .row button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <header>
+      <div>
+        <div class="logo">Chatly</div>
+        <div class="subtitle">Общайся с друзьями</div>
+      </div>
+      <button id="logoutButton" class="secondary hidden">
+        Выйти
+      </button>
+    </header>
+
+    <section id="authPanel" class="panel">
+      <h2 id="authTitle">Вход в Chatly</h2>
+
+      <form id="authForm">
+        <div id="usernameField" class="hidden">
+          <input
+            id="usernameInput"
+            type="text"
+            minlength="3"
+            maxlength="20"
+            pattern="[a-zA-Z0-9_]{3,20}"
+            autocomplete="username"
+            placeholder="Имя пользователя (3–20 символов)"
+          >
+        </div>
+
+        <input
+          id="emailInput"
+          type="email"
+          autocomplete="email"
+          placeholder="Электронная почта"
+          required
+        >
+
+        <input
+          id="passwordInput"
+          type="password"
+          minlength="6"
+          autocomplete="current-password"
+          placeholder="Пароль (не менее 6 символов)"
+          required
+        >
+
+        <button id="authSubmit" class="full" type="submit">
+          Войти
+        </button>
+      </form>
+
+      <p class="muted" id="authHint">
+        Нет аккаунта? Зарегистрируйся.
+      </p>
+
+      <button id="toggleAuth" class="secondary full">
+        Создать аккаунт
+      </button>
+
+      <div id="authStatus" class="status"></div>
+    </section>
+
+    <section id="appPanel" class="hidden">
+      <section class="panel">
+        <h2>Мой профиль</h2>
+        <div id="myProfile" class="muted"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Найти друга</h2>
+        <form id="searchForm">
+          <div class="row">
+            <input
+              id="searchInput"
+              type="text"
+              maxlength="20"
+              placeholder="Имя пользователя"
+              required
+            >
+            <button id="searchButton" type="submit">
+              Найти
+            </button>
+          </div>
+        </form>
+        <div id="searchStatus" class="status"></div>
+        <div id="searchResult"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Входящие заявки</h2>
+        <div id="incomingList" class="muted">
+          Загрузка заявок…
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Мои заявки</h2>
+        <div id="outgoingList" class="muted">
+          Загрузка заявок…
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Мои друзья</h2>
+        <div id="contactsList" class="muted">
+          Загрузка контактов…
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from
+      "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+
+    import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged
+    } from
+      "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      getDocs,
+      setDoc,
+      collection,
+      query,
+      where,
+      onSnapshot,
+      writeBatch,
+      serverTimestamp,
+      runTransaction
+    } from
+      "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
+      authDomain: "chatly-19613.firebaseapp.com",
+      projectId: "chatly-19613",
+      storageBucket: "chatly-19613.firebasestorage.app",
+      messagingSenderId: "1080401916394",
+      appId: "1:1080401916394:web:815e66c78ced380b4c8293",
+      measurementId: "G-WJ2NPP9T45"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const $ = (id) => document.getElementById(id);
+
+    let isRegistering = false;
+    let currentProfile = null;
+    let unsubscribeListeners = [];
+    const accepting = new Set();
+    const rejecting = new Set();
+
+    function setStatus(id, text, type = "") {
+      const element = $(id);
+      element.textContent = text;
+      element.className = "status" + (type ? " " + type : "");
+    }
+
+    function friendlyError(error) {
+      const code = error?.code || "";
+      const messages = {
+        "auth/email-already-in-use": "Эта почта уже зарегистрирована.",
+        "auth/invalid-email": "Проверь адрес электронной почты.",
+        "auth/weak-password": "Пароль слишком простой.",
+        "auth/invalid-credential": "Неверная почта или пароль.",
+        "auth/user-not-found": "Аккаунт не найден.",
+        "auth/wrong-password": "Неверная почта или пароль.",
+        "auth/too-many-requests": "Слишком много попыток. Попробуй позже.",
+        "permission-denied": "Firestore отказал в доступе. Проверь опубликованные правила и права пользователя.",
+        "unavailable": "Firebase временно недоступен. Попробуй ещё раз."
+      };
+
+      return (messages[code] || error?.message || "Неизвестная ошибка")
+        + (code ? " [" + code + "]" : "");
+    }
+
+    function showAuthMode(registering) {
+      isRegistering = registering;
+
+      $("authTitle").textContent = registering
+        ? "Создание аккаунта"
+        : "Вход в Chatly";
+
+      $("usernameField").classList.toggle("hidden", !registering);
+      $("usernameInput").required = registering;
+
+      $("passwordInput").autocomplete = registering
+        ? "new-password"
+        : "current-password";
+
+      $("authSubmit").textContent = registering
+        ? "Зарегистрироваться"
+        : "Войти";
+
+      $("authHint").textContent = registering
+        ? "Уже есть аккаунт? Переключись на вход."
+        : "Нет аккаунта? Зарегистрируйся.";
+
+      $("toggleAuth").textContent = registering
+        ? "У меня уже есть аккаунт"
+        : "Создать аккаунт";
+
+      setStatus("authStatus", "");
+    }
+
+    $("toggleAuth").addEventListener("click", () => {
+      showAuthMode(!isRegistering);
+    });
+
+    $("authForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const email = $("emailInput").value.trim();
+      const password = $("passwordInput").value;
+      const username = $("usernameInput").value.trim().toLowerCase();
+
+      $("authSubmit").disabled = true;
+      setStatus("authStatus", "Подожди…");
+
+      try {
+        if (isRegistering) {
+          if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+            throw new Error(
+              "Имя должно содержать 3–20 символов: латинские буквы, цифры или _."
+            );
+          }
+
+          const credential = await createUserWithEmailAndPassword(
+            auth, email, password
+          );
+
+          try {
+            await runTransaction(db, async (transaction) => {
+              const usernameRef = doc(db, "usernames", username);
+              const userRef = doc(db, "users", credential.user.uid);
+
+              const existingUsername = await transaction.get(usernameRef);
+
+              if (existingUsername.exists()) {
+                throw new Error("Это имя пользователя уже занято.");
+              }
+
+              transaction.set(userRef, {
+                username,
+                createdAt: serverTimestamp()
+              });
+
+              transaction.set(usernameRef, {
+                uid: credential.user.uid
+              });
+            });
+          } catch (profileError) {
+            // Если создание профиля не получилось, не оставляем
+            // пользователя в частично зарегистрированном состоянии.
+            await signOut(auth);
+            throw profileError;
+          }
+
+          setStatus("authStatus", "Аккаунт создан!", "success");
+        } else {
+          await signInWithEmailAndPassword(auth, email, password);
+        }
+      } catch (error) {
+        console.error("Ошибка авторизации:", error);
+        setStatus("authStatus", friendlyError(error), "error");
+      } finally {
+        $("authSubmit").disabled = false;
+      }
+    });
+
+    $("logoutButton").addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+      } catch (error) {
+        alert(friendlyError(error));
+      }
+    });
+
+    function stopListeners() {
+      unsubscribeListeners.forEach((unsubscribe) => unsubscribe());
+      unsubscribeListeners = [];
+    }
+
+    async function getProfile(uid) {
+      const profileSnap = await getDoc(doc(db, "users", uid));
+
+      if (!profileSnap.exists()) {
+        return null;
+      }
+
+      return {
+        uid,
+        ...profileSnap.data()
+      };
+    }
+
+    function makeEmptyMessage(text) {
+      const div = document.createElement("div");
+      div.className = "muted";
+      div.textContent = text;
+      return div;
+    }
+
+    function makePerson(name, subtitle = "") {
+      const person = document.createElement("div");
+      person.className = "person";
+
+      const info = document.createElement("div");
+      info.className = "person-info";
+
+      const username = document.createElement("div");
+      username.className = "username";
+      username.textContent = name;
+
+      info.appendChild(username);
+
+      if (subtitle) {
+        const detail = document.createElement("div");
+        detail.className = "muted";
+        detail.textContent = subtitle;
+        info.appendChild(detail);
+      }
+
+      const actions = document.createElement("div");
+      actions.className = "person-actions";
+
+      person.append(info, actions);
+
+      return { person, actions };
+    }
+
+    function addAction(parent, text, callback, className = "") {
+      const button = document.createElement("button");
+      button.textContent = text;
+
+      if (className) {
+        button.className = className;
+      }
+
+      button.addEventListener("click", callback);
+      parent.appendChild(button);
+      return button;
+    }
+
+    async function sendFriendRequest(targetUid) {
+      const me = auth.currentUser;
+
+      if (!me) throw new Error("Сначала войди в аккаунт.");
+      if (targetUid === me.uid) {
+        throw new Error("Нельзя добавить самого себя.");
+      }
+
+      const outgoingQuery = query(
+        collection(db, "contactRequests"),
+        where("senderUid", "==", me.uid),
+        where("recipientUid", "==", targetUid)
+      );
+
+      const incomingQuery = query(
+        collection(db, "contactRequests"),
+        where("senderUid", "==", targetUid),
+        where("recipientUid", "==", me.uid)
+      );
+
+      const [outgoing, incoming, myContact, theirContact] =
+        await Promise.all([
+          getDocs(outgoingQuery),
+          getDocs(incomingQuery),
+          getDoc(doc(db, "users", me.uid, "contacts", targetUid)),
+          getDoc(doc(db, "users", targetUid, "contacts", me.uid))
+        ]);
+
+      if (myContact.exists() || theirContact.exists()) {
+        throw new Error("Вы уже друзья.");
+      }
+
+      if (outgoing.docs.some(d => d.data().status === "pending")) {
+        throw new Error("Заявка этому пользователю уже отправлена.");
+      }
+
+      if (incoming.docs.some(d => d.data().status === "pending")) {
+        throw new Error(
+          "Этот пользователь уже отправил тебе заявку. Найди её во входящих."
+        );
+      }
+
+      await setDoc(doc(collection(db, "contactRequests")), {
+        senderUid: me.uid,
+        recipientUid: targetUid,
+        status: "pending",
         createdAt: serverTimestamp()
       });
-    });
-
-    if (auth.currentUser?.uid === userAtStart.uid) {
-      await loadCurrentProfile(userAtStart, generation);
-    }
-  } catch (error) {
-    if (error.message === "USERNAME_TAKEN") {
-      status("Этот username занят. Выбери другой.");
-    } else if (error.message === "PROFILE_ALREADY_EXISTS") {
-      try {
-        await loadCurrentProfile(userAtStart, generation);
-      } catch (loadError) {
-        reportError(loadError);
-      }
-    } else {
-      reportError(error);
-    }
-  } finally {
-    busy = false;
-    $("usernameSubmit").disabled = false;
-  }
-};
-
-/* Поиск пользователя и отправка заявки. */
-$("searchForm").onsubmit = async event => {
-  event.preventDefault();
-  if (!me) return;
-
-  const userAtStart = me;
-  const username = $("searchInput").value.trim().replace(/^@/, "").toLowerCase();
-  const result = $("searchResult");
-  result.replaceChildren();
-
-  if (!/^[a-z0-9_]{3,20}$/.test(username)) {
-    result.textContent = "Введи username из 3–20 символов.";
-    return;
-  }
-
-  try {
-    const usernameSnap = await getDoc(doc(db, "usernames", username));
-
-    if (me?.uid !== userAtStart.uid) return;
-
-    if (!usernameSnap.exists()) {
-      result.textContent = "Пользователь не найден.";
-      return;
     }
 
-    const otherUid = usernameSnap.data().uid;
+    async function acceptRequest(requestId, senderUid) {
+      const me = auth.currentUser;
 
-    if (otherUid === userAtStart.uid) {
-      result.textContent = "Это твой профиль 🙂";
-      return;
-    }
-
-    const otherProfile = await getProfile(otherUid);
-    if (me?.uid !== userAtStart.uid) return;
-
-    if (!otherProfile) {
-      result.textContent = "Профиль не найден.";
-      return;
-    }
-
-    const contactSnap = await getDoc(
-      doc(db, "users", userAtStart.uid, "contacts", otherUid)
-    );
-
-    if (me?.uid !== userAtStart.uid) return;
-
-    if (contactSnap.exists()) {
-      result.appendChild(
-        makeRow(usernameLabel(otherProfile), "Написать", () => openChat(otherUid))
-      );
-      return;
-    }
-
-    const row = makeRow(usernameLabel(otherProfile), "Отправить запрос", async () => {
-      const button = row.querySelector("button");
-      button.disabled = true;
-      status("Отправляем заявку...");
-
-      try {
-        await addDoc(collection(db, "contactRequests"), {
-          senderUid: userAtStart.uid,
-          recipientUid: otherUid,
-          status: "pending",
-          createdAt: serverTimestamp()
-        });
-
-        status("Заявка отправлена пользователю " + usernameLabel(otherProfile) + ".");
-        result.replaceChildren();
-      } catch (error) {
-        reportError(error);
-        button.disabled = false;
-      }
-    });
-
-    result.appendChild(row);
-  } catch (error) {
-    reportError(error);
-  }
-};
-
-/*
- * ИСПРАВЛЕННОЕ ПРИНЯТИЕ ЗАЯВКИ.
- * Не использует общий busy-флаг, который мог молча блокировать кнопку.
- * Для каждой заявки есть собственная блокировка.
- */
-async function acceptRequest(requestSnap, button) {
-  const requestId = requestSnap.id;
-
-  if (!me) {
-    status("Сначала войди в Chatly.");
-    return;
-  }
-
-  if (acceptingRequests.has(requestId)) {
-    status("Эта заявка уже обрабатывается...");
-    return;
-  }
-
-  const userAtStart = me;
-  acceptingRequests.add(requestId);
-  if (button) button.disabled = true;
-
-  status("Принимаем заявку в друзья...");
-
-  try {
-    const data = requestSnap.data();
-
-    if (data.recipientUid !== userAtStart.uid) {
-      throw new Error("Эта заявка предназначена не тебе.");
-    }
-
-    if (data.status !== "pending") {
-      status("Заявка уже обработана. Обнови страницу.");
-      return;
-    }
-
-    if (!data.senderUid || data.senderUid === userAtStart.uid) {
-      throw new Error("В заявке указан неправильный отправитель.");
-    }
-
-    /*
-     * Все три операции выполняются одной атомарной записью:
-     * 1. Заявка становится accepted.
-     * 2. Отправитель появляется в контактах получателя.
-     * 3. Получатель появляется в контактах отправителя.
-     */
-    const batch = writeBatch(db);
-
-    batch.update(requestSnap.ref, {
-      status: "accepted"
-    });
-
-    batch.set(
-      doc(db, "users", data.senderUid, "contacts", data.recipientUid),
-      {
-        requestId: requestId,
-        createdAt: serverTimestamp()
-      }
-    );
-
-    batch.set(
-      doc(db, "users", data.recipientUid, "contacts", data.senderUid),
-      {
-        requestId: requestId,
-        createdAt: serverTimestamp()
-      }
-    );
-
-    await batch.commit();
-
-    if (auth.currentUser?.uid === userAtStart.uid) {
-      status("✅ Заявка принята! Теперь пользователь есть в контактах.");
-    }
-  } catch (error) {
-    console.error("acceptRequest failed:", error);
-
-    status("Не удалось принять заявку: " + friendlyError(error));
-
-    if (button) button.disabled = false;
-  } finally {
-    acceptingRequests.delete(requestId);
-  }
-}
-
-async function rejectRequest(requestSnap, button) {
-  if (!me) return;
-
-  if (button) button.disabled = true;
-
-  try {
-    const data = requestSnap.data();
-
-    if (data.recipientUid !== me.uid || data.status !== "pending") {
-      throw new Error("Эта заявка уже обработана.");
-    }
-
-    await updateDoc(requestSnap.ref, { status: "rejected" });
-    status("Заявка отклонена.");
-  } catch (error) {
-    reportError(error);
-    if (button) button.disabled = false;
-  }
-}
-
-/* Входящие и отправленные заявки. */
-function watchRequests(uid, field, listId, incoming) {
-  const q = query(
-    collection(db, "contactRequests"),
-    where(field, "==", uid)
-  );
-
-  let version = 0;
-
-  const stop = onSnapshot(q, async snapshot => {
-    const current = ++version;
-    const list = $(listId);
-    list.replaceChildren();
-
-    const pending = snapshot.docs.filter(item => item.data().status === "pending");
-
-    if (!pending.length) {
-      list.textContent = incoming ? "Нет новых запросов." : "Нет ожидающих запросов.";
-      return;
-    }
-
-    const rows = [];
-
-    for (const requestSnap of pending) {
-      const data = requestSnap.data();
-      const otherUid = incoming ? data.senderUid : data.recipientUid;
-
-      try {
-        const otherProfile = await getProfile(otherUid);
-
-        if (current !== version || me?.uid !== uid) return;
-        if (!otherProfile) continue;
-
-        let row;
-
-        if (incoming) {
-          row = makeRow(usernameLabel(otherProfile), "Принять", () => {});
-          const buttons = row.querySelectorAll("button");
-          const acceptButton = buttons[0];
-
-          acceptButton.onclick = () => acceptRequest(requestSnap, acceptButton);
-
-          const rejectButton = document.createElement("button");
-          rejectButton.type = "button";
-          rejectButton.className = "secondary";
-          rejectButton.textContent = "Отклонить";
-          rejectButton.onclick = () => rejectRequest(requestSnap, rejectButton);
-          row.appendChild(rejectButton);
-        } else {
-          row = makeRow(usernameLabel(otherProfile), "Ожидает ответа", () => {
-            status("Заявка ещё ожидает ответа.");
-          });
-        }
-
-        rows.push(row);
-      } catch (error) {
-        if (current === version) reportError(error);
-      }
-    }
-
-    if (current !== version || me?.uid !== uid) return;
-
-    list.replaceChildren(...rows);
-
-    if (!rows.length) {
-      list.textContent = incoming ? "Нет новых запросов." : "Нет ожидающих запросов.";
-    }
-  }, error => {
-    console.error("Requests listener:", error);
-    reportError(error);
-  });
-
-  addListener(stop);
-}
-
-/* Контакты. */
-function watchContacts(uid) {
-  let version = 0;
-
-  const stop = onSnapshot(
-    collection(db, "users", uid, "contacts"),
-    async snapshot => {
-      const current = ++version;
-      const list = $("contactsList");
-      list.replaceChildren();
-
-      if (snapshot.empty) {
-        list.textContent = "Контактов пока нет. Найди друга выше!";
+      if (!me) {
+        alert("Сначала войди в аккаунт.");
         return;
       }
 
-      const rows = [];
+      if (accepting.has(requestId)) return;
+      accepting.add(requestId);
 
-      for (const item of snapshot.docs) {
-        try {
-          const otherProfile = await getProfile(item.id);
+      try {
+        const requestRef = doc(db, "contactRequests", requestId);
+        const requestSnap = await getDoc(requestRef);
 
-          if (current !== version || me?.uid !== uid) return;
-          if (!otherProfile) continue;
+        if (!requestSnap.exists()) {
+          throw new Error("Заявка больше не существует.");
+        }
 
-          rows.push(
-            makeRow(usernameLabel(otherProfile), "Написать", () => openChat(item.id))
+        const requestData = requestSnap.data();
+
+        if (requestData.recipientUid !== me.uid) {
+          throw new Error("Принять заявку может только её получатель.");
+        }
+
+        if (requestData.senderUid !== senderUid) {
+          throw new Error("UID отправителя не совпадает с заявкой.");
+        }
+
+        if (requestData.status !== "pending") {
+          throw new Error("Заявка уже обработана.");
+        }
+
+        const myContactRef = doc(
+          db, "users", me.uid, "contacts", senderUid
+        );
+
+        const senderContactRef = doc(
+          db, "users", senderUid, "contacts", me.uid
+        );
+
+        const [myContact, senderContact] = await Promise.all([
+          getDoc(myContactRef),
+          getDoc(senderContactRef)
+        ]);
+
+        if (myContact.exists() || senderContact.exists()) {
+          throw new Error(
+            "Контакт уже существует. Обнови страницу и проверь список друзей."
           );
+        }
+
+        const batch = writeBatch(db);
+
+        batch.set(myContactRef, {
+          requestId,
+          createdAt: serverTimestamp()
+        });
+
+        batch.set(senderContactRef, {
+          requestId,
+          createdAt: serverTimestamp()
+        });
+
+        batch.update(requestRef, {
+          status: "accepted"
+        });
+
+        await batch.commit();
+
+        setStatus(
+          "authStatus",
+          "Заявка принята! Вы теперь в контактах.",
+          "success"
+        );
+      } catch (error) {
+        console.error("Ошибка принятия заявки:", error);
+        alert("Не удалось принять заявку: " + friendlyError(error));
+      } finally {
+        accepting.delete(requestId);
+      }
+    }
+
+    async function rejectRequest(requestId) {
+      const me = auth.currentUser;
+
+      if (!me || rejecting.has(requestId)) return;
+      rejecting.add(requestId);
+
+      try {
+        const requestRef = doc(db, "contactRequests", requestId);
+        const requestSnap = await getDoc(requestRef);
+
+        if (!requestSnap.exists()) {
+          throw new Error("Заявка больше не существует.");
+        }
+
+        const data = requestSnap.data();
+
+        if (data.recipientUid !== me.uid || data.status !== "pending") {
+          throw new Error("Эту заявку нельзя отклонить.");
+        }
+
+        await writeBatch(db).update;
+        const batch = writeBatch(db);
+        batch.update(requestRef, { status: "rejected" });
+        await batch.commit();
+      } catch (error) {
+        console.error("Ошибка отклонения заявки:", error);
+        alert("Не удалось отклонить заявку: " + friendlyError(error));
+      } finally {
+        rejecting.delete(requestId);
+      }
+    }
+
+    async function renderIncoming(snapshot) {
+      const container = $("incomingList");
+      container.replaceChildren();
+
+      if (snapshot.empty) {
+        container.appendChild(makeEmptyMessage("Новых заявок нет."));
+        return;
+      }
+
+      for (const requestDoc of snapshot.docs) {
+        const data = requestDoc.data();
+
+        try {
+          const profile = await getProfile(data.senderUid);
+          const username = profile?.username || "Пользователь";
+
+          const { person, actions } = makePerson(
+            username,
+            "Хочет добавить тебя в друзья"
+          );
+
+          addAction(actions, "Принять", () =>
+            acceptRequest(requestDoc.id, data.senderUid)
+          );
+
+          addAction(
+            actions,
+            "Отклонить",
+            () => rejectRequest(requestDoc.id),
+            "danger"
+          );
+
+          container.appendChild(person);
         } catch (error) {
-          if (current === version) reportError(error);
+          console.error("Не удалось загрузить отправителя:", error);
+        }
+      }
+    }
+
+    async function renderOutgoing(snapshot) {
+      const container = $("outgoingList");
+      container.replaceChildren();
+
+      if (snapshot.empty) {
+        container.appendChild(makeEmptyMessage("Отправленных заявок нет."));
+        return;
+      }
+
+      for (const requestDoc of snapshot.docs) {
+        const data = requestDoc.data();
+
+        if (data.status !== "pending") continue;
+
+        try {
+          const profile = await getProfile(data.recipientUid);
+          const username = profile?.username || "Пользователь";
+
+          const { person } = makePerson(
+            username,
+            "Заявка ожидает ответа"
+          );
+
+          container.appendChild(person);
+        } catch (error) {
+          console.error("Не удалось загрузить получателя:", error);
         }
       }
 
-      if (current !== version || me?.uid !== uid) return;
-
-      list.replaceChildren(...rows);
-
-      if (!rows.length) list.textContent = "Контактов пока нет.";
-    },
-    error => {
-      console.error("Contacts listener:", error);
-      reportError(error);
-    }
-  );
-
-  addListener(stop);
-}
-
-/* Список уже созданных чатов. */
-function watchChats(uid) {
-  const q = query(
-    collection(db, "chats"),
-    where("members", "array-contains", uid)
-  );
-
-  let version = 0;
-
-  const stop = onSnapshot(q, async snapshot => {
-    const current = ++version;
-    const list = $("chatsList");
-    list.replaceChildren();
-
-    if (snapshot.empty) {
-      list.textContent = "Пока нет чатов. Открой переписку из контактов.";
-      return;
-    }
-
-    const rows = [];
-
-    for (const chat of snapshot.docs) {
-      const otherUid = chat.data().members?.find(id => id !== uid);
-      if (!otherUid) continue;
-
-      try {
-        const otherProfile = await getProfile(otherUid);
-
-        if (current !== version || me?.uid !== uid) return;
-        if (!otherProfile) continue;
-
-        rows.push(
-          makeRow(usernameLabel(otherProfile), "Открыть", () => openChat(otherUid))
-        );
-      } catch (error) {
-        if (current === version) reportError(error);
+      if (!container.childElementCount) {
+        container.appendChild(makeEmptyMessage("Активных заявок нет."));
       }
     }
 
-    if (current !== version || me?.uid !== uid) return;
+    async function renderContacts(snapshot) {
+      const container = $("contactsList");
+      container.replaceChildren();
 
-    list.replaceChildren(...rows);
+      if (snapshot.empty) {
+        container.appendChild(makeEmptyMessage("Пока нет друзей."));
+        return;
+      }
 
-    if (!rows.length) {
-      list.textContent = "Пока нет чатов. Открой переписку из контактов.";
+      for (const contactDoc of snapshot.docs) {
+        const uid = contactDoc.id;
+
+        try {
+          const profile = await getProfile(uid);
+          const username = profile?.username || "Пользователь";
+
+          const { person, actions } = makePerson(
+            username,
+            "Друг в Chatly"
+          );
+
+          addAction(actions, "Открыть чат", () => {
+            const url = new URL("chat.html", window.location.href);
+            url.searchParams.set("uid", uid);
+            window.location.href = url.toString();
+          });
+
+          container.appendChild(person);
+        } catch (error) {
+          console.error("Не удалось загрузить контакт:", error);
+        }
+      }
     }
-  }, error => {
-    console.error("Chats listener:", error);
-    reportError(error);
-  });
 
-  addListener(stop);
-}
+    function startListeners(uid) {
+      stopListeners();
 
-/* Вход и выход: подписки очищаются, данные не удаляются. */
-onAuthStateChanged(auth, async user => {
-  const generation = ++authGeneration;
+      const incomingQuery = query(
+        collection(db, "contactRequests"),
+        where("recipientUid", "==", uid),
+        where("status", "==", "pending")
+      );
 
-  unsubAll();
+      const outgoingQuery = query(
+        collection(db, "contactRequests"),
+        where("senderUid", "==", uid),
+        where("status", "==", "pending")
+      );
 
-  me = user;
-  profile = null;
+      const contactsRef = collection(db, "users", uid, "contacts");
 
-  $("searchResult").replaceChildren();
+      unsubscribeListeners.push(
+        onSnapshot(
+          incomingQuery,
+          snapshot => renderIncoming(snapshot),
+          error => {
+            console.error("Ошибка входящих заявок:", error);
+            $("incomingList").textContent =
+              "Не удалось загрузить заявки: " + friendlyError(error);
+          }
+        )
+      );
 
-  if (!user) {
-    showAuth();
-    status("Войди или зарегистрируйся.");
-    $("myUsername").textContent = "";
-    $("incomingList").textContent = "Войди, чтобы увидеть запросы.";
-    $("outgoingList").textContent = "Войди, чтобы увидеть запросы.";
-    $("contactsList").textContent = "Войди, чтобы увидеть контакты.";
-    $("chatsList").textContent = "Войди, чтобы увидеть чаты.";
-    return;
-  }
+      unsubscribeListeners.push(
+        onSnapshot(
+          outgoingQuery,
+          snapshot => renderOutgoing(snapshot),
+          error => {
+            console.error("Ошибка исходящих заявок:", error);
+            $("outgoingList").textContent =
+              "Не удалось загрузить заявки: " + friendlyError(error);
+          }
+        )
+      );
 
-  $("incomingList").textContent = "Загрузка...";
-  $("outgoingList").textContent = "Загрузка...";
-  $("contactsList").textContent = "Загрузка...";
-  $("chatsList").textContent = "Загрузка...";
+      unsubscribeListeners.push(
+        onSnapshot(
+          contactsRef,
+          snapshot => renderContacts(snapshot),
+          error => {
+            console.error("Ошибка контактов:", error);
+            $("contactsList").textContent =
+              "Не удалось загрузить контакты: " + friendlyError(error);
+          }
+        )
+      );
+    }
 
-  status("Загружаем профиль...");
+    $("searchForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
 
-  try {
-    await loadCurrentProfile(user, generation);
-  } catch (error) {
-    if (generation === authGeneration) reportError(error);
-  }
-});
-</script>
+      const username = $("searchInput").value.trim().toLowerCase();
+
+      $("searchButton").disabled = true;
+      $("searchResult").replaceChildren();
+      setStatus("searchStatus", "Ищем пользователя…");
+
+      try {
+        if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+          throw new Error(
+            "Введи имя из 3–20 латинских букв, цифр или символов _."
+          );
+        }
+
+        const usernameSnap = await getDoc(doc(db, "usernames", username));
+
+        if (!usernameSnap.exists()) {
+          throw new Error("Пользователь с таким именем не найден.");
+        }
+
+        const targetUid = usernameSnap.data().uid;
+
+        if (!targetUid) {
+          throw new Error("У профиля нет UID.");
+        }
+
+        if (targetUid === auth.currentUser.uid) {
+          throw new Error("Это твоё собственное имя пользователя.");
+        }
+
+        const profile = await getProfile(targetUid);
+
+        if (!profile) {
+          throw new Error("Профиль пользователя не найден.");
+        }
+
+        const { person, actions } = makePerson(
+          profile.username,
+          "Пользователь Chatly"
+        );
+
+        addAction(actions, "Добавить", async (event) => {
+          const button = event.currentTarget;
+          button.disabled = true;
+          setStatus("searchStatus", "Отправляем заявку…");
+
+          try {
+            await sendFriendRequest(targetUid);
+            setStatus("searchStatus", "Заявка отправлена!", "success");
+            button.textContent = "Отправлено";
+          } catch (error) {
+            console.error("Ошибка отправки заявки:", error);
+            setStatus(
+              "searchStatus",
+              friendlyError(error),
+              "error"
+            );
+            button.disabled = false;
+          }
+        });
+
+        $("searchResult").appendChild(person);
+        setStatus("searchStatus", "");
+      } catch (error) {
+        console.error("Ошибка поиска:", error);
+        setStatus("searchStatus", friendlyError(error), "error");
+      } finally {
+        $("searchButton").disabled = false;
+      }
+    });
+
+    onAuthStateChanged(auth, async (user) => {
+      stopListeners();
+
+      $("authPanel").classList.toggle("hidden", !!user);
+      $("appPanel").classList.toggle("hidden", !user);
+      $("logoutButton").classList.toggle("hidden", !user);
+
+      if (!user) {
+        currentProfile = null;
+        return;
+      }
+
+      try {
+        currentProfile = await getProfile(user.uid);
+
+        if (!currentProfile) {
+          throw new Error(
+            "Профиль не найден. Возможно, регистрация не завершилась."
+          );
+        }
+
+        $("myProfile").textContent =
+          "@" + currentProfile.username;
+
+        startListeners(user.uid);
+      } catch (error) {
+        console.error("Ошибка загрузки профиля:", error);
+        alert(
+          "Не удалось загрузить профиль: " + friendlyError(error)
+        );
+      }
+    });
+
+    showAuthMode(false);
+  </script>
 </body>
 </html>
