@@ -20,9 +20,8 @@ button:disabled{opacity:.5}
 .line{display:flex;gap:8px;align-items:center}
 .line input{flex:1}
 .line button{flex-shrink:0}
-.person{display:flex;align-items:center;gap:9px;padding:12px 0;border-bottom:1px solid #efedf7}
-.person:last-child{border-bottom:0}
-.person-name{flex:1;min-width:0;overflow-wrap:anywhere}
+.person{display:flex;align-items:center;gap:9px;padding:12px 0;border-bottom:1px solid #efedf7;flex-wrap:wrap}
+.person-name{flex:1;min-width:100px;overflow-wrap:anywhere}
 .hint{font-size:13px;color:#77738c}
 #status{overflow-wrap:anywhere}
 #chatMessages{height:35vh;min-height:180px;overflow-y:auto;padding:10px;background:#faf9ff;border-radius:12px;margin:12px 0}
@@ -129,21 +128,18 @@ const firebaseConfig={
   measurementId:"G-WJ2NPP9T45"
 };
 
-const auth=getAuth(initializeApp(firebaseConfig));
-const db=getFirestore();
+const appFirebase=initializeApp(firebaseConfig);
+const auth=getAuth(appFirebase);
+const db=getFirestore(appFirebase);
 const $=id=>document.getElementById(id);
 
-let me=null, profile=null, registering=false, busy=false;
-let activeChat=null, activeOther=null, stopMessages=null, stops=[];
-const unsubAll=()=>{
-  stops.forEach(fn=>fn()); stops=[];
-  if(stopMessages) stopMessages();
-  stopMessages=null;
-};
+let me=null,profile=null,registering=false,busy=false;
+let activeChat=null,activeOther=null,stopMessages=null,stops=[];
 
 function status(text){$("status").textContent=text;}
+
 function reportError(e){
-  console.error(e);
+  console.error("Chatly error:",e);
   const errors={
     "auth/email-already-in-use":"Этот email уже зарегистрирован.",
     "auth/invalid-email":"Проверь email.",
@@ -151,39 +147,63 @@ function reportError(e){
     "auth/invalid-credential":"Неверный email или пароль.",
     "auth/too-many-requests":"Слишком много попыток. Попробуй позже.",
     "auth/operation-not-allowed":"Включи Email/Password в Firebase Authentication.",
-    "permission-denied":"Firebase запретил действие. Проверь Rules и доступ к данным.",
+    "permission-denied":"Firebase отклонил действие. Проверь Firestore Rules и консоль браузера.",
     "already-exists":"Такой документ уже существует.",
     "unavailable":"Проблема с интернетом. Попробуй ещё раз."
   };
-  status(errors[e.code]||("Не удалось выполнить действие: "+(e.message||e.code||"ошибка")));
+  status(errors[e.code]||("Ошибка: "+(e.message||e.code||"не удалось выполнить действие")));
 }
+
+function unsubAll(){
+  stops.forEach(fn=>fn());
+  stops=[];
+  if(stopMessages)stopMessages();
+  stopMessages=null;
+}
+
 function addListener(fn){stops.push(fn);}
+
 function showAuth(){
   $("authCard").hidden=false;
   $("setupCard").hidden=true;
   $("app").hidden=true;
 }
+
 function showApp(){
   $("authCard").hidden=true;
   $("setupCard").hidden=true;
   $("app").hidden=false;
 }
+
 function makeRow(label,buttonText,action,secondText=null,secondAction=null){
-  const row=document.createElement("div"); row.className="person";
-  const name=document.createElement("div"); name.className="person-name"; name.textContent=label;
+  const row=document.createElement("div");
+  row.className="person";
+
+  const name=document.createElement("div");
+  name.className="person-name";
+  name.textContent=label;
   row.appendChild(name);
-  const b=document.createElement("button"); b.textContent=buttonText;
-  b.addEventListener("click",action); row.appendChild(b);
+
+  const b=document.createElement("button");
+  b.textContent=buttonText;
+  b.addEventListener("click",action);
+  row.appendChild(b);
+
   if(secondText){
-    const b2=document.createElement("button"); b2.className="secondary";
-    b2.textContent=secondText; b2.addEventListener("click",secondAction); row.appendChild(b2);
+    const b2=document.createElement("button");
+    b2.className="secondary";
+    b2.textContent=secondText;
+    b2.addEventListener("click",secondAction);
+    row.appendChild(b2);
   }
   return row;
 }
+
 async function getProfile(uid){
   const s=await getDoc(doc(db,"users",uid));
   return s.exists()?s.data():null;
 }
+
 function usernameLabel(p){return "@"+p.username;}
 
 $("authSwitch").onclick=()=>{
@@ -193,136 +213,217 @@ $("authSwitch").onclick=()=>{
   $("authSwitch").textContent=registering?"У меня есть аккаунт":"Регистрация";
   $("password").autocomplete=registering?"new-password":"current-password";
 };
+
 $("authForm").onsubmit=async e=>{
-  e.preventDefault(); if(busy)return; busy=true;
+  e.preventDefault();
+  if(busy)return;
+  busy=true;
   $("authSubmit").disabled=true;
   try{
     if(registering){
-      await createUserWithEmailAndPassword(auth,$("email").value.trim(),$("password").value);
+      await createUserWithEmailAndPassword(
+        auth,$("email").value.trim(),$("password").value
+      );
     }else{
-      await signInWithEmailAndPassword(auth,$("email").value.trim(),$("password").value);
+      await signInWithEmailAndPassword(
+        auth,$("email").value.trim(),$("password").value
+      );
     }
-  }catch(err){reportError(err);}
-  finally{busy=false;$("authSubmit").disabled=false;}
+  }catch(err){
+    reportError(err);
+  }finally{
+    busy=false;
+    $("authSubmit").disabled=false;
+  }
 };
+
 $("logout").onclick=async()=>{
   unsubAll();
-  try{await signOut(auth);status("Ты вышел из Chatly.");}
-  catch(e){reportError(e);}
+  try{
+    await signOut(auth);
+    status("Ты вышел из Chatly.");
+  }catch(e){reportError(e);}
 };
 
 $("usernameForm").onsubmit=async e=>{
-  e.preventDefault();if(!me||busy)return;busy=true;
+  e.preventDefault();
+  if(!me||busy)return;
+  busy=true;
+
   const username=$("usernameInput").value.trim().toLowerCase();
   if(!/^[a-z0-9_]{3,20}$/.test(username)){
     status("Username должен содержать 3–20 латинских букв, цифр или _.");
-    busy=false;return;
+    busy=false;
+    return;
   }
+
   try{
     const userRef=doc(db,"users",me.uid);
     const nameRef=doc(db,"usernames",username);
+
     await runTransaction(db,async tx=>{
-      const [u,n]=await Promise.all([tx.get(userRef),tx.get(nameRef)]);
+      const [u,n]=await Promise.all([
+        tx.get(userRef),tx.get(nameRef)
+      ]);
       if(u.exists())throw new Error("Профиль уже существует. Перезагрузи страницу.");
       if(n.exists())throw new Error("USERNAME_TAKEN");
+
       tx.set(nameRef,{uid:me.uid});
       tx.set(userRef,{username,createdAt:serverTimestamp()});
     });
     status("Профиль создан!");
   }catch(e){
-    if(e.message==="USERNAME_TAKEN")status("Это имя занято. Выбери другое.");
-    else reportError(e);
-  }finally{busy=false;}
+    if(e.message==="USERNAME_TAKEN"){
+      status("Это имя занято. Выбери другое.");
+    }else{
+      reportError(e);
+    }
+  }finally{
+    busy=false;
+  }
 };
 
 $("searchForm").onsubmit=async e=>{
-  e.preventDefault();if(!me)return;
+  e.preventDefault();
+  if(!me)return;
+
   const username=$("searchInput").value.trim().replace(/^@/,"").toLowerCase();
-  const result=$("searchResult");result.replaceChildren();
+  const result=$("searchResult");
+  result.replaceChildren();
+
   if(!/^[a-z0-9_]{3,20}$/.test(username)){
-    result.textContent="Введи username из 3–20 символов.";return;
+    result.textContent="Введи username из 3–20 символов.";
+    return;
   }
+
   try{
     const n=await getDoc(doc(db,"usernames",username));
-    if(!n.exists()){result.textContent="Пользователь не найден.";return;}
+    if(!n.exists()){
+      result.textContent="Пользователь не найден.";
+      return;
+    }
+
     const uid=n.data().uid;
-    if(uid===me.uid){result.textContent="Это твой профиль 🙂";return;}
+    if(uid===me.uid){
+      result.textContent="Это твой профиль 🙂";
+      return;
+    }
+
     const p=await getProfile(uid);
-    if(!p){result.textContent="Профиль не найден.";return;}
-    const existing=await getDoc(doc(db,"users",me.uid,"contacts",uid));
-    if(existing.exists()){
+    if(!p){
+      result.textContent="Профиль не найден.";
+      return;
+    }
+
+    const contact=await getDoc(doc(db,"users",me.uid,"contacts",uid));
+    if(contact.exists()){
       result.appendChild(makeRow(usernameLabel(p),"Написать",()=>openChat(uid)));
       return;
     }
-    result.appendChild(makeRow(usernameLabel(p),"Отправить запрос",async()=>{
+
+    const button=makeRow(usernameLabel(p),"Отправить запрос",async()=>{
+      if(button.dataset.sending==="yes")return;
+      button.dataset.sending="yes";
+
+      const sendButton=button.querySelector("button");
+      sendButton.disabled=true;
+
       try{
-        const outgoing=query(collection(db,"contactRequests"),
-          where("senderUid","==",me.uid),where("recipientUid","==",uid),
-          where("status","==","pending"));
-        // Prevent duplicate pending requests.
-        const existingRequests=await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js")
-          .then(m=>m.getDocs(outgoing));
-        if(!existingRequests.empty){status("Запрос этому человеку уже отправлен.");return;}
+        // Не читаем всю коллекцию перед отправкой.
+        // Создаём только один запрос с полями, разрешёнными Rules.
         await addDoc(collection(db,"contactRequests"),{
-          senderUid:me.uid,recipientUid:uid,status:"pending",
+          senderUid:me.uid,
+          recipientUid:uid,
+          status:"pending",
           createdAt:serverTimestamp()
         });
+
         status("Запрос отправлен пользователю "+usernameLabel(p)+".");
         result.replaceChildren();
-      }catch(err){reportError(err);}
-    }));
-  }catch(err){reportError(err);}
+      }catch(err){
+        reportError(err);
+        button.dataset.sending="no";
+        sendButton.disabled=false;
+      }
+    });
+
+    result.appendChild(button);
+  }catch(err){
+    reportError(err);
+  }
 };
 
 async function acceptRequest(requestDoc){
-  if(!me||busy)return;busy=true;
+  if(!me||busy)return;
+  busy=true;
+
   try{
     const data=requestDoc.data();
-    if(data.recipientUid!==me.uid||data.status!=="pending")
+    if(data.recipientUid!==me.uid||data.status!=="pending"){
       throw new Error("Этот запрос уже обработан.");
+    }
+
     const batch=writeBatch(db);
     batch.update(requestDoc.ref,{status:"accepted"});
+
     batch.set(doc(db,"users",data.senderUid,"contacts",data.recipientUid),{
-      requestId:requestDoc.id,createdAt:serverTimestamp()
+      requestId:requestDoc.id,
+      createdAt:serverTimestamp()
     });
+
     batch.set(doc(db,"users",data.recipientUid,"contacts",data.senderUid),{
-      requestId:requestDoc.id,createdAt:serverTimestamp()
+      requestId:requestDoc.id,
+      createdAt:serverTimestamp()
     });
+
     await batch.commit();
     status("Запрос принят! Теперь вы можете переписываться.");
-  }catch(e){reportError(e);}
-  finally{busy=false;}
+  }catch(e){
+    reportError(e);
+  }finally{
+    busy=false;
+  }
 }
+
 async function rejectRequest(requestDoc){
   try{
-    if(requestDoc.data().recipientUid!==me.uid)throw new Error("Нельзя обработать чужой запрос.");
+    if(requestDoc.data().recipientUid!==me.uid){
+      throw new Error("Нельзя обработать чужой запрос.");
+    }
     await updateDoc(requestDoc.ref,{status:"rejected"});
     status("Запрос отклонён.");
-  }catch(e){reportError(e);}
+  }catch(e){
+    reportError(e);
+  }
 }
 
 function watchRequests(uid,field,listId,incoming){
   const q=query(collection(db,"contactRequests"),where(field,"==",uid));
+
   addListener(onSnapshot(q,async snap=>{
-    const list=$(listId);list.replaceChildren();
-    const requests=snap.docs.filter(d=>
-      incoming?d.data().status==="pending":
-      d.data().status==="pending");
+    const list=$(listId);
+    list.replaceChildren();
+
+    const requests=snap.docs.filter(d=>d.data().status==="pending");
     if(!requests.length){
       list.textContent=incoming?"Нет новых запросов.":"Нет ожидающих запросов.";
       return;
     }
+
     for(const r of requests){
       const d=r.data();
       try{
         const otherUid=incoming?d.senderUid:d.recipientUid;
         const p=await getProfile(otherUid);
         if(!p)continue;
+
         if(incoming){
-          list.appendChild(makeRow(usernameLabel(p),"Принять",
-            ()=>acceptRequest(r),"Отклонить",()=>rejectRequest(r)));
+          list.appendChild(makeRow(
+            usernameLabel(p),"Принять",()=>acceptRequest(r),
+            "Отклонить",()=>rejectRequest(r)
+          ));
         }else{
-          list.appendChild(makeRow(usernameLabel(p),"Ожидает ответа",()=>{},null,null));
+          list.appendChild(makeRow(usernameLabel(p),"Ожидает ответа",()=>{}));
         }
       }catch(e){reportError(e);}
     }
@@ -331,11 +432,18 @@ function watchRequests(uid,field,listId,incoming){
 
 function watchContacts(uid){
   addListener(onSnapshot(collection(db,"users",uid,"contacts"),async snap=>{
-    const list=$("contactsList");list.replaceChildren();
-    if(snap.empty){list.textContent="Контактов пока нет. Найди друга выше!";return;}
+    const list=$("contactsList");
+    list.replaceChildren();
+
+    if(snap.empty){
+      list.textContent="Контактов пока нет. Найди друга выше!";
+      return;
+    }
+
     for(const item of snap.docs){
       try{
-        const p=await getProfile(item.id);if(!p)continue;
+        const p=await getProfile(item.id);
+        if(!p)continue;
         list.appendChild(makeRow(usernameLabel(p),"Написать",()=>openChat(item.id)));
       }catch(e){reportError(e);}
     }
@@ -346,62 +454,99 @@ function chatIdFor(a,b){return [a,b].sort().join("__");}
 
 async function openChat(otherUid){
   if(!me||!otherUid||otherUid===me.uid)return;
+
   try{
     status("Открываем личный чат...");
     const contact=await getDoc(doc(db,"users",me.uid,"contacts",otherUid));
+
     if(!contact.exists()){
       status("Сначала нужно принять запрос и добавить друг друга в контакты.");
       return;
     }
+
     const other=await getProfile(otherUid);
     if(!other)throw new Error("Профиль собеседника не найден.");
+
     const members=[me.uid,otherUid].sort();
     const chatId=chatIdFor(me.uid,otherUid);
     const chatRef=doc(db,"chats",chatId);
+
     await runTransaction(db,async tx=>{
       const c=await tx.get(chatRef);
       if(!c.exists()){
         tx.set(chatRef,{members,createdAt:serverTimestamp()});
-      }else if(!c.data().members.includes(me.uid)||!c.data().members.includes(otherUid)){
+      }else if(
+        !c.data().members.includes(me.uid)||
+        !c.data().members.includes(otherUid)
+      ){
         throw new Error("Участники чата не совпадают.");
       }
     });
-    activeChat=chatId;activeOther=otherUid;
+
+    activeChat=chatId;
+    activeOther=otherUid;
     $("conversationTitle").textContent="Переписка с "+usernameLabel(other);
     $("conversation").hidden=false;
     $("chatMessages").replaceChildren();
+
     if(stopMessages)stopMessages();
+
     const messagesRef=collection(db,"chats",chatId,"messages");
     stopMessages=onSnapshot(messagesRef,snap=>{
-      const list=$("chatMessages");list.replaceChildren();
+      const list=$("chatMessages");
+      list.replaceChildren();
+
       const sorted=snap.docs.sort((a,b)=>
         (a.data().createdAt?.toMillis?.()||0)-
-        (b.data().createdAt?.toMillis?.()||0));
+        (b.data().createdAt?.toMillis?.()||0)
+      );
+
       const fragment=document.createDocumentFragment();
       for(const d of sorted){
-        const data=d.data(),bubble=document.createElement("div");
+        const data=d.data();
+        const bubble=document.createElement("div");
         bubble.className="bubble"+(data.uid===me.uid?" mine":"");
-        const meta=document.createElement("div");meta.className="small";
+
+        const meta=document.createElement("div");
+        meta.className="small";
         meta.textContent=data.uid===me.uid?"Ты":usernameLabel(other);
-        const text=document.createElement("div");text.textContent=data.text||"";
-        bubble.append(meta,text);fragment.appendChild(bubble);
+
+        const text=document.createElement("div");
+        text.textContent=data.text||"";
+
+        bubble.append(meta,text);
+        fragment.appendChild(bubble);
       }
-      list.appendChild(fragment);list.scrollTop=list.scrollHeight;
+
+      list.appendChild(fragment);
+      list.scrollTop=list.scrollHeight;
     },reportError);
+
     status("Личный чат открыт.");
-  }catch(e){reportError(e);}
+  }catch(e){
+    reportError(e);
+  }
 }
 
 function watchChats(uid){
   const q=query(collection(db,"chats"),where("members","array-contains",uid));
+
   addListener(onSnapshot(q,async snap=>{
-    const list=$("chatsList");list.replaceChildren();
-    if(snap.empty){list.textContent="Пока нет чатов. Открой переписку из контактов.";return;}
+    const list=$("chatsList");
+    list.replaceChildren();
+
+    if(snap.empty){
+      list.textContent="Пока нет чатов. Открой переписку из контактов.";
+      return;
+    }
+
     for(const d of snap.docs){
       const otherUid=d.data().members.find(id=>id!==uid);
       if(!otherUid)continue;
+
       try{
-        const p=await getProfile(otherUid);if(!p)continue;
+        const p=await getProfile(otherUid);
+        if(!p)continue;
         list.appendChild(makeRow(usernameLabel(p),"Открыть",()=>openChat(otherUid)));
       }catch(e){reportError(e);}
     }
@@ -411,42 +556,77 @@ function watchChats(uid){
 $("closeChat").onclick=()=>{
   $("conversation").hidden=true;
   if(stopMessages)stopMessages();
-  stopMessages=null;activeChat=null;activeOther=null;
+  stopMessages=null;
+  activeChat=null;
+  activeOther=null;
 };
 
 $("messageForm").onsubmit=async e=>{
-  e.preventDefault();if(!me||!activeChat||busy)return;
+  e.preventDefault();
+  if(!me||!activeChat||busy)return;
+
   const text=$("messageInput").value.trim();
   if(!text||text.length>500)return;
-  busy=true;$("sendButton").disabled=true;
+
+  busy=true;
+  $("sendButton").disabled=true;
+
   try{
     const contact=await getDoc(doc(db,"users",me.uid,"contacts",activeOther));
     if(!contact.exists())throw new Error("Контакт больше недоступен.");
+
     await addDoc(collection(db,"chats",activeChat,"messages"),{
-      text,uid:me.uid,createdAt:serverTimestamp()
+      text,
+      uid:me.uid,
+      createdAt:serverTimestamp()
     });
+
     $("messageInput").value="";
-  }catch(e){reportError(e);}
-  finally{busy=false;$("sendButton").disabled=false;}
+  }catch(e){
+    reportError(e);
+  }finally{
+    busy=false;
+    $("sendButton").disabled=false;
+  }
 };
 
 onAuthStateChanged(auth,async user=>{
-  unsubAll();me=user;profile=null;activeChat=null;activeOther=null;
+  unsubAll();
+  me=user;
+  profile=null;
+  activeChat=null;
+  activeOther=null;
   $("conversation").hidden=true;
-  if(!user){showAuth();status("Войди или зарегистрируйся.");return;}
+
+  if(!user){
+    showAuth();
+    status("Войди или зарегистрируйся.");
+    return;
+  }
+
   try{
     profile=await getProfile(user.uid);
+
     if(!profile){
-      $("authCard").hidden=true;$("setupCard").hidden=false;$("app").hidden=true;
-      status("Выбери уникальный username.");return;
+      $("authCard").hidden=true;
+      $("setupCard").hidden=false;
+      $("app").hidden=true;
+      status("Выбери уникальный username.");
+      return;
     }
-    showApp();$("myUsername").textContent=usernameLabel(profile);
+
+    showApp();
+    $("myUsername").textContent=usernameLabel(profile);
+
     watchRequests(user.uid,"recipientUid","incomingList",true);
     watchRequests(user.uid,"senderUid","outgoingList",false);
     watchContacts(user.uid);
     watchChats(user.uid);
+
     status("Chatly онлайн 💜");
-  }catch(e){reportError(e);}
+  }catch(e){
+    reportError(e);
+  }
 });
 </script>
 </body>
