@@ -27,9 +27,16 @@
       border-bottom: 1px solid #303b55;
     }
 
-    .logo { color: #9aa9ff; font-size: 27px; font-weight: bold; }
+    .logo {
+      color: #9aa9ff;
+      font-size: 27px;
+      font-weight: bold;
+    }
 
-    main { width: min(650px, 94%); margin: 25px auto; }
+    main {
+      width: min(650px, 94%);
+      margin: 25px auto;
+    }
 
     .panel {
       background: #1a2233;
@@ -72,7 +79,12 @@
     button:disabled { opacity: .6; cursor: wait; }
     .secondary { background: #303b55; }
     .hidden { display: none !important; }
-    .muted { color: #aab5cd; font-size: 13px; overflow-wrap: anywhere; }
+
+    .muted {
+      color: #aab5cd;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
 
     .entry {
       display: flex;
@@ -86,8 +98,9 @@
     .entry:last-child { border-bottom: 0; }
     .entryInfo { min-width: 0; overflow-wrap: anywhere; }
     .entry button { width: auto; min-width: 95px; margin: 0; }
-    #authStatus, #searchStatus, #chatsStatus { overflow-wrap: anywhere; }
-    a { color: #aab7ff; }
+    #authStatus, #searchStatus, #chatsStatus {
+      overflow-wrap: anywhere;
+    }
 
     @media (max-width: 420px) {
       .panel { padding: 15px; }
@@ -109,41 +122,49 @@
       <p>Войди в аккаунт или создай новый, чтобы общаться.</p>
 
       <div id="registerFields">
-        <input id="username" placeholder="Имя пользователя"
-          maxlength="20" autocomplete="username">
-        <p class="muted">Для регистрации: 3–20 символов, латинские буквы, цифры или _.</p>
+        <input id="username"
+          placeholder="Имя пользователя"
+          maxlength="20"
+          autocomplete="username">
+        <p class="muted">
+          3–20 символов: латинские буквы, цифры или _.
+        </p>
       </div>
 
-      <input id="email" type="email" placeholder="Email"
-        autocomplete="email">
-      <input id="password" type="password" placeholder="Пароль"
-        autocomplete="current-password">
+      <input id="email" type="email"
+        placeholder="Email" autocomplete="email">
+      <input id="password" type="password"
+        placeholder="Пароль" autocomplete="current-password">
 
       <button id="loginBtn">Войти</button>
-      <button id="registerBtn" class="secondary">Создать аккаунт</button>
-      <p id="authStatus" role="status"></p>
+      <button id="registerBtn" class="secondary">
+        Создать аккаунт
+      </button>
+      <p id="authStatus" role="status" aria-live="polite"></p>
     </section>
 
     <div id="appPanel" class="hidden">
       <section class="panel">
         <h1>Привет, <span id="myUsername"></span>! 👋</h1>
-        <p>Ищи людей и начинай переписку без заявок в друзья.</p>
+        <p>Ищи пользователей и начинай переписку без заявок в друзья.</p>
       </section>
 
       <section class="panel">
         <h2>🔎 Найти пользователя</h2>
-        <input id="searchUsername" placeholder="Имя пользователя"
-          maxlength="20">
+        <input id="searchUsername"
+          placeholder="Имя пользователя" maxlength="20">
         <button id="searchBtn">Найти</button>
-        <p id="searchStatus" role="status"></p>
+        <p id="searchStatus" role="status" aria-live="polite"></p>
         <div id="searchResult"></div>
       </section>
 
       <section class="panel">
         <h2>💬 Мои чаты</h2>
-        <p>Здесь хранятся твои личные переписки.</p>
+        <p>Твои личные переписки.</p>
         <div id="myChatsList"></div>
-        <p id="chatsStatus" role="status">Загрузка чатов…</p>
+        <p id="chatsStatus" role="status" aria-live="polite">
+          Загружаем чаты…
+        </p>
       </section>
     </div>
   </main>
@@ -159,7 +180,8 @@
       onAuthStateChanged,
       signOut,
       updateProfile
-    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    } from
+      "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
     import {
       getFirestore,
@@ -170,8 +192,10 @@
       collection,
       query,
       where,
-      onSnapshot
-    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+      onSnapshot,
+      runTransaction
+    } from
+      "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
@@ -189,10 +213,14 @@
     const $ = id => document.getElementById(id);
 
     let stopChatsListener = null;
-    let currentSearchUser = null;
+    let authViewVersion = 0;
+    let chatLoadVersion = 0;
+    let searchVersion = 0;
 
-    function messageForError(error) {
-      console.error(error);
+    function showError(error) {
+      console.error("Chatly error:", error);
+
+      const code = error?.code || "";
 
       const messages = {
         "auth/email-already-in-use": "Этот email уже используется.",
@@ -200,18 +228,34 @@
         "auth/weak-password": "Пароль должен содержать минимум 6 символов.",
         "auth/invalid-credential": "Неверный email или пароль.",
         "auth/too-many-requests": "Слишком много попыток. Попробуй позже.",
-        "permission-denied": "Firebase запретил действие. Проверь Firestore Rules.",
-        "unavailable": "Нет соединения с Firebase. Проверь интернет."
+        "auth/network-request-failed": "Проверь подключение к интернету.",
+        "permission-denied":
+          "Firebase отказал в доступе. Проверь Firestore Rules.",
+        "unavailable": "Firebase недоступен. Проверь интернет.",
+        "already-exists": "Это имя пользователя уже занято."
       };
 
-      return messages[error.code] || error.message || "Неизвестная ошибка.";
+      return messages[code] ||
+        error?.message ||
+        "Произошла неизвестная ошибка.";
+    }
+
+    function stopListeningToChats() {
+      chatLoadVersion++;
+
+      if (stopChatsListener) {
+        stopChatsListener();
+        stopChatsListener = null;
+      }
     }
 
     function openChat(uid) {
+      if (!uid || !auth.currentUser) return;
+
       location.href = "chat.html?uid=" + encodeURIComponent(uid);
     }
 
-    function addChatRow(container, username, uid, subtitle) {
+    function addUserRow(container, username, uid, subtitle) {
       const row = document.createElement("div");
       row.className = "entry";
 
@@ -234,6 +278,11 @@
       container.append(row);
     }
 
+    function normalizeUsername(value) {
+      return value.trim().toLowerCase();
+    }
+
+    // Вход в существующий аккаунт.
     $("loginBtn").addEventListener("click", async () => {
       const email = $("email").value.trim();
       const password = $("password").value;
@@ -250,20 +299,21 @@
         await signInWithEmailAndPassword(auth, email, password);
         $("authStatus").textContent = "";
       } catch (error) {
-        $("authStatus").textContent = messageForError(error);
+        $("authStatus").textContent = showError(error);
       } finally {
         $("loginBtn").disabled = false;
       }
     });
 
+    // Регистрация и атомарное резервирование имени в Firestore.
     $("registerBtn").addEventListener("click", async () => {
-      const username = $("username").value.trim().toLowerCase();
+      const username = normalizeUsername($("username").value);
       const email = $("email").value.trim();
       const password = $("password").value;
 
-      if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+      if (!/^[a-z0-9_]{3,20}$/.test(username)) {
         $("authStatus").textContent =
-          "Имя должно содержать 3–20 латинских букв, цифр или _.";
+          "Имя: 3–20 символов, латинские буквы, цифры или _.";
         return;
       }
 
@@ -273,24 +323,15 @@
       }
 
       if (password.length < 6) {
-        $("authStatus").textContent = "Пароль должен быть не короче 6 символов.";
+        $("authStatus").textContent =
+          "Пароль должен содержать минимум 6 символов.";
         return;
       }
 
       $("registerBtn").disabled = true;
-      $("authStatus").textContent = "Проверяем имя пользователя…";
-
       let createdUser = null;
 
       try {
-        const usernameRef = doc(db, "usernames", username);
-        const existing = await getDoc(usernameRef);
-
-        if (existing.exists()) {
-          $("authStatus").textContent = "Это имя уже занято. Выбери другое.";
-          return;
-        }
-
         $("authStatus").textContent = "Создаём аккаунт…";
 
         const credential = await createUserWithEmailAndPassword(
@@ -299,91 +340,128 @@
 
         createdUser = credential.user;
 
-        // Резервируем имя и создаём профиль.
-        await setDoc(usernameRef, { uid: createdUser.uid });
+        const usernameRef = doc(db, "usernames", username);
+        const userRef = doc(db, "users", createdUser.uid);
 
-        await setDoc(doc(db, "users", createdUser.uid), {
-          username,
-          createdAt: serverTimestamp()
+        await runTransaction(db, async transaction => {
+          const existingName = await transaction.get(usernameRef);
+
+          if (existingName.exists()) {
+            throw new Error("USERNAME_TAKEN");
+          }
+
+          transaction.set(usernameRef, {
+            uid: createdUser.uid
+          });
+
+          transaction.set(userRef, {
+            username,
+            createdAt: serverTimestamp()
+          });
         });
 
-        await updateProfile(createdUser, { displayName: username });
+        await updateProfile(createdUser, {
+          displayName: username
+        });
 
         $("authStatus").textContent = "Аккаунт создан!";
       } catch (error) {
-        $("authStatus").textContent =
-          "Не удалось завершить регистрацию: " + messageForError(error);
+        if (error.message === "USERNAME_TAKEN") {
+          $("authStatus").textContent =
+            "Это имя уже занято. Выбери другое.";
+        } else {
+          $("authStatus").textContent =
+            "Ошибка регистрации: " + showError(error);
 
-        if (createdUser) {
-          $("authStatus").textContent +=
-            " Аккаунт мог создаться, но профиль — нет. Выйди и войди снова; если ошибка повторится, сообщи мне её текст.";
+          if (createdUser) {
+            $("authStatus").textContent +=
+              " Аккаунт мог быть создан без профиля. Не регистрируйся повторно с тем же email; сначала проверь вход и профиль в Firebase.";
+          }
         }
       } finally {
         $("registerBtn").disabled = false;
       }
     });
 
+    // Выход.
     $("logoutBtn").addEventListener("click", async () => {
       try {
         await signOut(auth);
       } catch (error) {
-        alert(messageForError(error));
+        alert(showError(error));
       }
     });
 
+    // Поиск пользователя по имени.
     async function searchUser() {
-      const username = $("searchUsername").value.trim().toLowerCase();
+      const version = ++searchVersion;
+      const username = normalizeUsername($("searchUsername").value);
+
       $("searchResult").replaceChildren();
       $("searchStatus").textContent = "";
-      currentSearchUser = null;
 
-      if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
-        $("searchStatus").textContent = "Введи корректное имя пользователя.";
+      if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+        $("searchStatus").textContent =
+          "Введи имя из 3–20 латинских букв, цифр или _.";
         return;
       }
 
-      if (!auth.currentUser) {
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
         $("searchStatus").textContent = "Сначала войди в аккаунт.";
         return;
       }
 
       $("searchBtn").disabled = true;
-      $("searchStatus").textContent = "Ищем…";
+      $("searchStatus").textContent = "Ищем пользователя…";
 
       try {
-        const usernameDoc = await getDoc(doc(db, "usernames", username));
+        const usernameSnapshot = await getDoc(
+          doc(db, "usernames", username)
+        );
 
-        if (!usernameDoc.exists()) {
+        if (version !== searchVersion) return;
+
+        if (!usernameSnapshot.exists()) {
           $("searchStatus").textContent = "Пользователь не найден.";
           return;
         }
 
-        const uid = usernameDoc.data().uid;
+        const uid = usernameSnapshot.data().uid;
 
-        if (uid === auth.currentUser.uid) {
-          $("searchStatus").textContent = "Это твой собственный аккаунт.";
+        if (uid === currentUser.uid) {
+          $("searchStatus").textContent =
+            "Это твой собственный аккаунт.";
           return;
         }
 
-        const profileDoc = await getDoc(doc(db, "users", uid));
+        const profileSnapshot = await getDoc(doc(db, "users", uid));
 
-        if (!profileDoc.exists()) {
-          $("searchStatus").textContent = "Профиль пользователя не найден.";
+        if (version !== searchVersion) return;
+
+        if (!profileSnapshot.exists()) {
+          $("searchStatus").textContent =
+            "Профиль не найден. Возможно, регистрация не завершилась.";
           return;
         }
 
-        addChatRow(
+        addUserRow(
           $("searchResult"),
-          profileDoc.data().username || username,
+          profileSnapshot.data().username || username,
           uid,
-          "Можно начать переписку"
+          "Личная переписка без заявок в друзья"
         );
 
         $("searchStatus").textContent = "";
       } catch (error) {
-        $("searchStatus").textContent = messageForError(error);
+        if (version === searchVersion) {
+          $("searchStatus").textContent = showError(error);
+        }
       } finally {
-        $("searchBtn").disabled = false;
+        if (version === searchVersion) {
+          $("searchBtn").disabled = false;
+        }
       }
     }
 
@@ -393,12 +471,11 @@
       if (event.key === "Enter") searchUser();
     });
 
+    // Подписка на чаты текущего пользователя.
     function loadMyChats(user) {
-      if (stopChatsListener) {
-        stopChatsListener();
-        stopChatsListener = null;
-      }
+      stopListeningToChats();
 
+      const version = chatLoadVersion;
       $("myChatsList").replaceChildren();
       $("chatsStatus").textContent = "Загружаем чаты…";
 
@@ -407,83 +484,149 @@
         where("members", "array-contains", user.uid)
       );
 
-      stopChatsListener = onSnapshot(chatsQuery, async snapshot => {
-        const chats = snapshot.docs;
-        $("myChatsList").replaceChildren();
+      stopChatsListener = onSnapshot(
+        chatsQuery,
+        async snapshot => {
+          if (
+            version !== chatLoadVersion ||
+            !auth.currentUser ||
+            auth.currentUser.uid !== user.uid
+          ) return;
 
-        if (chats.length === 0) {
-          $("chatsStatus").textContent =
-            "Пока нет чатов. Найди пользователя и нажми «Написать».";
-          return;
-        }
+          $("myChatsList").replaceChildren();
 
-        $("chatsStatus").textContent = "Твои переписки:";
-
-        for (const chatDocument of chats) {
-          const members = chatDocument.data().members || [];
-          const otherUid = members.find(uid => uid !== user.uid);
-
-          if (!otherUid) continue;
-
-          try {
-            const profile = await getDoc(doc(db, "users", otherUid));
-
-            if (!profile.exists()) continue;
-
-            // Пока загружался профиль, пользователь мог выйти.
-            if (!auth.currentUser || auth.currentUser.uid !== user.uid) return;
-
-            addChatRow(
-              $("myChatsList"),
-              profile.data().username || "пользователь",
-              otherUid,
-              "Личная переписка"
-            );
-          } catch (error) {
-            console.error("Не удалось загрузить профиль собеседника:", error);
+          if (snapshot.empty) {
+            $("chatsStatus").textContent =
+              "Пока нет чатов. Найди пользователя и нажми «Написать».";
+            return;
           }
-        }
 
-        if ($("myChatsList").childElementCount === 0) {
-          $("chatsStatus").textContent = "Не удалось загрузить участников чатов.";
+          $("chatsStatus").textContent = "Загружаем участников…";
+
+          const chats = snapshot.docs;
+
+          const rows = await Promise.all(chats.map(async chatSnapshot => {
+            const members = chatSnapshot.data().members;
+
+            if (!Array.isArray(members)) return null;
+
+            const otherUid = members.find(uid => uid !== user.uid);
+
+            if (!otherUid) return null;
+
+            try {
+              const profileSnapshot = await getDoc(
+                doc(db, "users", otherUid)
+              );
+
+              if (!profileSnapshot.exists()) {
+                return {
+                  uid: otherUid,
+                  username: "пользователь",
+                  subtitle: "Профиль не найден"
+                };
+              }
+
+              return {
+                uid: otherUid,
+                username: profileSnapshot.data().username || "пользователь",
+                subtitle: "Личная переписка"
+              };
+            } catch (error) {
+              console.error("Ошибка загрузки профиля:", error);
+              return null;
+            }
+          }));
+
+          if (
+            version !== chatLoadVersion ||
+            !auth.currentUser ||
+            auth.currentUser.uid !== user.uid
+          ) return;
+
+          $("myChatsList").replaceChildren();
+
+          for (const row of rows) {
+            if (!row) continue;
+
+            addUserRow(
+              $("myChatsList"),
+              row.username,
+              row.uid,
+              row.subtitle
+            );
+          }
+
+          $("chatsStatus").textContent =
+            $("myChatsList").childElementCount
+              ? "Твои переписки"
+              : "Не удалось загрузить участников чатов.";
+        },
+        error => {
+          if (version !== chatLoadVersion) return;
+
+          console.error("Ошибка списка чатов:", error);
+          $("myChatsList").replaceChildren();
+          $("chatsStatus").textContent =
+            "Не удалось загрузить чаты: " + showError(error);
         }
-      }, error => {
-        console.error(error);
-        $("chatsStatus").textContent = messageForError(error);
-      });
+      );
     }
 
+    // Обновление интерфейса при входе и выходе.
     onAuthStateChanged(auth, async user => {
+      const version = ++authViewVersion;
+
+      stopListeningToChats();
+      searchVersion++;
+
       $("authPanel").classList.toggle("hidden", !!user);
       $("appPanel").classList.toggle("hidden", !user);
       $("logoutBtn").classList.toggle("hidden", !user);
 
-      if (!user) {
-        if (stopChatsListener) {
-          stopChatsListener();
-          stopChatsListener = null;
-        }
+      $("searchResult").replaceChildren();
+      $("searchStatus").textContent = "";
+      $("myChatsList").replaceChildren();
 
-        $("myChatsList").replaceChildren();
-        $("chatsStatus").textContent = "Войди, чтобы увидеть свои чаты.";
-        $("searchResult").replaceChildren();
+      if (!user) {
         $("myUsername").textContent = "";
+        $("chatsStatus").textContent =
+          "Войди, чтобы увидеть свои чаты.";
         return;
       }
 
+      $("chatsStatus").textContent = "Загружаем чаты…";
+
       try {
-        const profile = await getDoc(doc(db, "users", user.uid));
+        const profileSnapshot = await getDoc(
+          doc(db, "users", user.uid)
+        );
 
-        if (profile.exists()) {
-          $("myUsername").textContent = "@" + profile.data().username;
+        if (version !== authViewVersion) return;
+
+        if (profileSnapshot.exists()) {
+          $("myUsername").textContent =
+            profileSnapshot.data().username || user.displayName || "пользователь";
         } else {
-          $("myUsername").textContent = user.displayName || "пользователь";
-        }
-      } catch (error) {
-        $("myUsername").textContent = user.displayName || "пользователь";
-      }
+          $("myUsername").textContent =
+            user.displayName || "пользователь";
 
-      loadMyChats(user);
+          $("chatsStatus").textContent =
+            "Профиль не найден. Возможно, регистрация не завершилась.";
+          return;
+        }
+
+        loadMyChats(user);
+      } catch (error) {
+        if (version !== authViewVersion) return;
+
+        console.error("Ошибка загрузки профиля:", error);
+        $("myUsername").textContent =
+          user.displayName || "пользователь";
+
+        $("chatsStatus").textContent =
+          "Ошибка загрузки профиля: " + showError(error);
+      }
     });
   </script>
 </body>
