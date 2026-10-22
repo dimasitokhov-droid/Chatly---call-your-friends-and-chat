@@ -19,7 +19,7 @@
     }
 
     header {
-      padding: 16px;
+      padding: 15px;
       display: flex;
       align-items: center;
       gap: 14px;
@@ -51,8 +51,8 @@
     }
 
     #messages {
-      height: calc(100dvh - 175px);
-      min-height: 250px;
+      height: calc(100dvh - 235px);
+      min-height: 220px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -83,12 +83,30 @@
 
     .time { margin: 6px 0 0; }
 
+    .photo {
+      display: block;
+      max-width: 100%;
+      width: auto;
+      max-height: 420px;
+      object-fit: contain;
+      border-radius: 9px;
+      margin-top: 4px;
+      background: #111827;
+    }
+
+    .composer {
+      position: sticky;
+      bottom: 0;
+      padding: 10px 0;
+      background: #101522;
+    }
+
     form {
       display: flex;
       gap: 8px;
     }
 
-    input {
+    input[type="text"] {
       flex: 1;
       min-width: 0;
       padding: 13px;
@@ -114,18 +132,39 @@
       cursor: not-allowed;
     }
 
+    .photoButtons {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .photoButtons button {
+      flex: 1;
+      background: #303b55;
+    }
+
+    #uploadStatus {
+      font-size: 13px;
+      color: #b7c1d8;
+      overflow-wrap: anywhere;
+      margin: 4px 0 8px;
+    }
+
+    .hidden { display: none !important; }
+
     @media (max-width: 420px) {
       header { gap: 9px; padding: 13px; }
       main { padding: 10px; }
       form { gap: 6px; }
       form button { padding: 10px; }
+      .message { max-width: 92%; }
     }
   </style>
 </head>
 
 <body>
   <header>
-    <a href="index.html">← Мои чаты</a>
+    <a href="index.html">← Chatly</a>
     <div id="chatName">Загрузка переписки…</div>
   </header>
 
@@ -136,19 +175,50 @@
 
     <div id="messages" aria-live="polite"></div>
 
-    <form id="messageForm">
+    <div class="composer">
+      <div class="photoButtons">
+        <button id="galleryBtn" type="button" disabled>
+          🖼️ Галерея
+        </button>
+
+        <button id="cameraBtn" type="button" disabled>
+          📷 Камера
+        </button>
+      </div>
+
       <input
-        id="messageInput"
-        maxlength="5000"
-        placeholder="Напиши сообщение…"
-        autocomplete="off"
-        required
-        disabled
+        id="galleryInput"
+        class="hidden"
+        type="file"
+        accept="image/*"
       >
-      <button id="sendBtn" type="submit" disabled>
-        Отправить
-      </button>
-    </form>
+
+      <input
+        id="cameraInput"
+        class="hidden"
+        type="file"
+        accept="image/*"
+        capture="environment"
+      >
+
+      <p id="uploadStatus" role="status" aria-live="polite"></p>
+
+      <form id="messageForm">
+        <input
+          id="messageInput"
+          type="text"
+          maxlength="5000"
+          placeholder="Напиши сообщение…"
+          autocomplete="off"
+          required
+          disabled
+        >
+
+        <button id="sendBtn" type="submit" disabled>
+          Отправить
+        </button>
+      </form>
+    </div>
   </main>
 
   <script type="module">
@@ -175,6 +245,14 @@
     } from
       "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
+    import {
+      getStorage,
+      ref,
+      uploadBytes,
+      getDownloadURL
+    } from
+      "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
+
     const firebaseConfig = {
       apiKey: "AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
       authDomain: "chatly-19613.firebaseapp.com",
@@ -188,6 +266,7 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const storage = getStorage(app);
     const $ = id => document.getElementById(id);
 
     const targetUid = new URLSearchParams(
@@ -200,29 +279,36 @@
     let stopMessagesListener = null;
     let startVersion = 0;
     let sendInProgress = false;
+    let uploadInProgress = false;
+
+    const MAX_IMAGE_SIZE = 8 * 1024 * 1024;
 
     function showStatus(text) {
       $("status").textContent = text;
     }
 
     function showError(error) {
-      console.error("Chatly chat error:", error);
+      console.error("Chatly error:", error);
 
-      const code = error?.code || "";
-
-      if (code === "permission-denied") {
+      if (error?.code === "permission-denied") {
         showStatus(
-          "Firebase запретил доступ. Проверь Firestore Rules и участников чата."
+          "Firebase отказал в доступе. Проверь правила Firestore."
         );
-      } else if (code === "failed-precondition") {
-        showStatus(
-          "Firebase сообщил о проблеме настройки. Подробности смотри в консоли."
-        );
-      } else if (code === "unavailable") {
+      } else if (
+        error?.code === "storage/unauthorized"
+      ) {
+        $("uploadStatus").textContent =
+          "Firebase Storage запретил загрузку. Проверь правила Storage.";
+      } else if (
+        error?.code === "storage/unknown"
+      ) {
+        $("uploadStatus").textContent =
+          "Ошибка Storage. Проверь настройки хранилища и интернет.";
+      } else if (error?.code === "unavailable") {
         showStatus("Firebase недоступен. Проверь интернет.");
       } else {
         showStatus(
-          "Ошибка: " + (error?.message || "не удалось открыть переписку.")
+          "Ошибка: " + (error?.message || "не удалось выполнить действие.")
         );
       }
     }
@@ -234,10 +320,13 @@
       }
     }
 
-    function updateSendButton() {
-      $("sendBtn").disabled =
-        !currentUser || !chatId || sendInProgress;
-      $("messageInput").disabled = !currentUser || !chatId;
+    function updateControls() {
+      const ready = !!currentUser && !!chatId;
+
+      $("messageInput").disabled = !ready || sendInProgress;
+      $("sendBtn").disabled = !ready || sendInProgress;
+      $("galleryBtn").disabled = !ready || uploadInProgress;
+      $("cameraBtn").disabled = !ready || uploadInProgress;
     }
 
     function formatTime(timestamp) {
@@ -271,14 +360,39 @@
             ? "Ты"
             : "@" + targetUsername;
 
-        const text = document.createElement("div");
-        text.textContent = data.text || "";
+        bubble.append(sender);
+
+        // Поддерживаем старые текстовые сообщения
+        // и новые сообщения с изображениями.
+        if (data.type === "image" && data.imageUrl) {
+          const image = document.createElement("img");
+          image.className = "photo";
+          image.src = data.imageUrl;
+          image.alt = "Фотография";
+          image.loading = "lazy";
+
+          image.addEventListener("error", () => {
+            image.alt = "Не удалось загрузить фотографию";
+          });
+
+          bubble.append(image);
+
+          if (data.text) {
+            const caption = document.createElement("div");
+            caption.textContent = data.text;
+            bubble.append(caption);
+          }
+        } else {
+          const text = document.createElement("div");
+          text.textContent = data.text || "";
+          bubble.append(text);
+        }
 
         const time = document.createElement("div");
         time.className = "time";
         time.textContent = formatTime(data.createdAt);
+        bubble.append(time);
 
-        bubble.append(sender, text, time);
         container.append(bubble);
       }
 
@@ -288,12 +402,12 @@
     async function startChat(user, version) {
       stopMessages();
       chatId = null;
-      updateSendButton();
+      updateControls();
       $("messages").replaceChildren();
 
       if (!targetUid) {
         showStatus(
-          "Не указан UID пользователя. Вернись на главную и нажми «Написать»."
+          "Не указан UID собеседника. Вернись на главную и нажми «Написать»."
         );
         return;
       }
@@ -306,26 +420,24 @@
       showStatus("Проверяем профиль собеседника…");
 
       try {
-        const targetRef = doc(db, "users", targetUid);
-        const myRef = doc(db, "users", user.uid);
-
         const [targetSnapshot, mySnapshot] = await Promise.all([
-          getDoc(targetRef),
-          getDoc(myRef)
+          getDoc(doc(db, "users", targetUid)),
+          getDoc(doc(db, "users", user.uid))
         ]);
 
-        if (version !== startVersion || !auth.currentUser ||
-            auth.currentUser.uid !== user.uid) return;
+        if (
+          version !== startVersion ||
+          !auth.currentUser ||
+          auth.currentUser.uid !== user.uid
+        ) return;
 
         if (!targetSnapshot.exists()) {
-          showStatus("Пользователь не найден или его профиль отсутствует.");
+          showStatus("Профиль собеседника не найден.");
           return;
         }
 
         if (!mySnapshot.exists()) {
-          showStatus(
-            "Твой профиль не найден. Проверь документ users/" + user.uid
-          );
+          showStatus("Твой профиль не найден в Firestore.");
           return;
         }
 
@@ -334,19 +446,18 @@
 
         $("chatName").textContent = "@" + targetUsername;
 
-        // У обоих пользователей будет один и тот же ID чата.
         const members = [user.uid, targetUid].sort();
         const newChatId = members[0] + "__" + members[1];
         const chatRef = doc(db, "chats", newChatId);
 
-        showStatus("Открываем личную переписку…");
+        showStatus("Открываем переписку…");
 
         await runTransaction(db, async transaction => {
           const existing = await transaction.get(chatRef);
 
           if (!existing.exists()) {
             transaction.set(chatRef, {
-              members: members,
+              members,
               createdAt: serverTimestamp()
             });
           } else {
@@ -359,18 +470,20 @@
               !savedMembers.includes(targetUid)
             ) {
               throw new Error(
-                "У существующего чата неверный список участников. Chat ID: " +
-                newChatId
+                "Список участников существующего чата неверен."
               );
             }
           }
         });
 
-        if (version !== startVersion || !auth.currentUser ||
-            auth.currentUser.uid !== user.uid) return;
+        if (
+          version !== startVersion ||
+          !auth.currentUser ||
+          auth.currentUser.uid !== user.uid
+        ) return;
 
         chatId = newChatId;
-        updateSendButton();
+        updateControls();
 
         const messagesQuery = query(
           collection(db, "chats", chatId, "messages"),
@@ -380,16 +493,19 @@
         stopMessagesListener = onSnapshot(
           messagesQuery,
           snapshot => {
-            if (version !== startVersion || !currentUser ||
-                currentUser.uid !== user.uid) return;
+            if (
+              version !== startVersion ||
+              !currentUser ||
+              currentUser.uid !== user.uid
+            ) return;
 
             renderMessages(snapshot);
 
-            showStatus(
-              snapshot.empty
-                ? "Сообщений пока нет. Напиши первым!"
-                : ""
-            );
+            if (snapshot.empty) {
+              showStatus("Сообщений пока нет. Напиши первым!");
+            } else {
+              showStatus("");
+            }
           },
           error => {
             if (version === startVersion) showError(error);
@@ -400,40 +516,38 @@
       }
     }
 
+    // Отправка обычного текста.
     $("messageForm").addEventListener("submit", async event => {
       event.preventDefault();
 
       const text = $("messageInput").value.trim();
 
-      if (!text || !currentUser || !chatId || sendInProgress) {
-        return;
-      }
-
-      if (text.length > 5000) {
-        showStatus("Сообщение не должно превышать 5000 символов.");
-        return;
-      }
+      if (
+        !text ||
+        !currentUser ||
+        !chatId ||
+        sendInProgress
+      ) return;
 
       const sender = currentUser;
       const activeChatId = chatId;
 
       sendInProgress = true;
-      updateSendButton();
+      updateControls();
 
       try {
         await addDoc(
           collection(db, "chats", activeChatId, "messages"),
           {
-            text: text,
+            type: "text",
+            text,
             uid: sender.uid,
             createdAt: serverTimestamp()
           }
         );
 
-        // Не очищаем новый текст, если пользователь уже сменился.
         if (
-          currentUser &&
-          currentUser.uid === sender.uid &&
+          currentUser?.uid === sender.uid &&
           chatId === activeChatId &&
           $("messageInput").value.trim() === text
         ) {
@@ -445,8 +559,116 @@
         showError(error);
       } finally {
         sendInProgress = false;
-        updateSendButton();
+        updateControls();
       }
+    });
+
+    // Загрузка изображения из галереи или камеры.
+    async function sendImage(file) {
+      if (!file || !currentUser || !chatId || uploadInProgress) {
+        return;
+      }
+
+      if (!file.type.startsWith("image/")) {
+        $("uploadStatus").textContent =
+          "Выбери файл изображения.";
+        return;
+      }
+
+      if (file.size > MAX_IMAGE_SIZE) {
+        $("uploadStatus").textContent =
+          "Фотография слишком большая. Максимум 8 МБ.";
+        return;
+      }
+
+      const sender = currentUser;
+      const activeChatId = chatId;
+
+      uploadInProgress = true;
+      updateControls();
+      $("uploadStatus").textContent = "Загружаем фотографию…";
+
+      try {
+        const safeName = file.name
+          .replace(/[^a-zA-Z0-9._-]/g, "_")
+          .slice(-80) || "photo.jpg";
+
+        const imagePath =
+          "chats/" + activeChatId + "/" + sender.uid + "/" +
+          Date.now() + "_" + safeName;
+
+        const imageRef = ref(storage, imagePath);
+
+        await uploadBytes(imageRef, file, {
+          contentType: file.type
+        });
+
+        const imageUrl = await getDownloadURL(imageRef);
+
+        if (
+          !auth.currentUser ||
+          auth.currentUser.uid !== sender.uid ||
+          chatId !== activeChatId
+        ) {
+          $("uploadStatus").textContent =
+            "Фото загружено, но чат изменился. Открой переписку снова.";
+          return;
+        }
+
+        await addDoc(
+          collection(db, "chats", activeChatId, "messages"),
+          {
+            type: "image",
+            imageUrl,
+            imagePath,
+            uid: sender.uid,
+            createdAt: serverTimestamp()
+          }
+        );
+
+        $("uploadStatus").textContent = "Фотография отправлена!";
+      } catch (error) {
+        console.error("Ошибка отправки фото:", error);
+
+        if (error?.code === "storage/unauthorized") {
+          $("uploadStatus").textContent =
+            "Нет доступа к Storage. Проверь правила хранилища.";
+        } else if (error?.code === "storage/canceled") {
+          $("uploadStatus").textContent = "Загрузка отменена.";
+        } else if (error?.code === "permission-denied") {
+          $("uploadStatus").textContent =
+            "Firestore запретил сохранить сообщение. Нужно обновить правила.";
+        } else {
+          $("uploadStatus").textContent =
+            "Не удалось отправить фото: " +
+            (error?.message || "неизвестная ошибка");
+        }
+      } finally {
+        uploadInProgress = false;
+        updateControls();
+      }
+    }
+
+    $("galleryBtn").addEventListener("click", () => {
+      $("galleryInput").click();
+    });
+
+    $("cameraBtn").addEventListener("click", () => {
+      $("cameraInput").click();
+    });
+
+    $("galleryInput").addEventListener("change", async event => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+
+      if (file) await sendImage(file);
+    });
+
+    $("cameraInput").addEventListener("change", async event => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+
+      if (file) await sendImage(file);
     });
 
     onAuthStateChanged(auth, user => {
@@ -457,8 +679,11 @@
       currentUser = user;
       chatId = null;
       sendInProgress = false;
+      uploadInProgress = false;
+
       $("messages").replaceChildren();
-      updateSendButton();
+      $("uploadStatus").textContent = "";
+      updateControls();
 
       if (!user) {
         $("chatName").textContent = "Переписка";
