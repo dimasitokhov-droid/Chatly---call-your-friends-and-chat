@@ -6,17 +6,17 @@
   "start_url": "/Chatly---call-your-friends-and-chat/",
   "scope": "/Chatly---call-your-friends-and-chat/",
   "display": "standalone",
-  "background_color": "#f3f1fb",
-  "theme_color": "#6757e8",
+  "background_color": "#101522",
+  "theme_color": "#101522",
   "lang": "ru",
   "icons": [
     {
-      "src": "https://placehold.co/192x192/6757e8/ffffff.png?text=Chatly",
+      "src": "https://placehold.co/192x192/7588ff/ffffff.png?text=Chatly",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://placehold.co/512x512/6757e8/ffffff.png?text=Chatly",
+      "src": "https://placehold.co/512x512/7588ff/ffffff.png?text=Chatly",
       "sizes": "512x512",
       "type": "image/png"
     }
