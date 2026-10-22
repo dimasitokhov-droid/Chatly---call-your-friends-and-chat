@@ -3,101 +3,110 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101522">
-  <title>Личный чат — Chatly</title>
+  <title>Переписка — Chatly</title>
   <style>
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      min-height: 100vh;
       background: #101522;
       color: #f5f7ff;
       font-family: Arial, sans-serif;
     }
 
     header {
-      background: #1a2233;
-      padding: 15px;
+      padding: 16px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
+      background: #1a2233;
       border-bottom: 1px solid #303b55;
     }
 
     header a { color: #aab7ff; text-decoration: none; }
     #chatName { font-weight: bold; overflow-wrap: anywhere; }
+
     main {
       width: min(760px, 100%);
-      margin: 0 auto;
-      padding: 15px;
+      margin: auto;
+      padding: 14px;
+    }
+
+    #status {
+      color: #b7c1d8;
+      font-size: 14px;
+      overflow-wrap: anywhere;
     }
 
     #messages {
-      height: calc(100dvh - 190px);
+      height: calc(100dvh - 170px);
       min-height: 250px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: 10px;
-      padding: 10px 0;
+      padding: 12px 0;
     }
 
     .message {
-      max-width: 82%;
+      max-width: 85%;
       padding: 11px 14px;
-      background: #263149;
       border-radius: 14px;
+      background: #263149;
       align-self: flex-start;
       overflow-wrap: anywhere;
       white-space: pre-wrap;
     }
 
-    .message.mine {
+    .mine {
       background: #596df0;
       align-self: flex-end;
     }
 
-    .sender { font-size: 12px; opacity: .8; margin-bottom: 5px; }
-    .messageText { line-height: 1.45; }
-    .time { font-size: 11px; opacity: .75; margin-top: 6px; }
+    .sender, .time {
+      font-size: 11px;
+      opacity: .8;
+      margin-bottom: 5px;
+    }
+
+    .time { margin: 6px 0 0; }
 
     form { display: flex; gap: 8px; }
-    input, button {
-      border-radius: 11px;
+
+    input {
+      flex: 1;
+      min-width: 0;
       padding: 13px;
+      border-radius: 11px;
+      border: 1px solid #3a4762;
+      background: #1a2233;
+      color: white;
       font-size: 16px;
     }
 
-    input {
-      min-width: 0;
-      flex: 1;
-      background: #1a2233;
-      color: white;
-      border: 1px solid #3a4762;
-    }
-
     button {
+      padding: 12px;
       border: 0;
+      border-radius: 11px;
       background: #7588ff;
       color: white;
       font-weight: bold;
       cursor: pointer;
     }
 
-    button:disabled { opacity: .6; }
-    #status { color: #b7c1d8; overflow-wrap: anywhere; }
+    button:disabled { opacity: .5; }
   </style>
 </head>
 <body>
   <header>
-    <a href="index.html">← Назад</a>
-    <div id="chatName">Загрузка чата…</div>
+    <a href="index.html">← Мои чаты</a>
+    <div id="chatName">Загрузка переписки…</div>
   </header>
 
   <main>
-    <p id="status" role="status">Подключаемся…</p>
+    <p id="status" role="status">Подключаемся к чату…</p>
     <div id="messages" aria-live="polite"></div>
 
     <form id="messageForm">
@@ -112,13 +121,21 @@
       "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 
     import {
-      getAuth, onAuthStateChanged
+      getAuth,
+      onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
     import {
-      getFirestore, doc, getDoc, setDoc, collection,
-      addDoc, query, orderBy, onSnapshot, serverTimestamp,
-      runTransaction
+      getFirestore,
+      doc,
+      getDoc,
+      runTransaction,
+      collection,
+      addDoc,
+      query,
+      orderBy,
+      onSnapshot,
+      serverTimestamp
     } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -136,29 +153,34 @@
     const db = getFirestore(app);
     const $ = id => document.getElementById(id);
 
-    const params = new URLSearchParams(location.search);
-    const targetUid = params.get("uid");
+    const targetUid = new URLSearchParams(location.search).get("uid");
+
     let currentUser = null;
     let chatId = null;
-    let targetUsername = "Пользователь";
-    let stopListening = null;
+    let targetUsername = "пользователь";
+    let stopMessagesListener = null;
     let starting = false;
+    let startedForUid = null;
 
-    function status(message) {
-      $("status").textContent = message;
+    function showStatus(text) {
+      $("status").textContent = text;
     }
 
     function showError(error) {
       console.error(error);
+
       if (error.code === "permission-denied") {
-        status("Доступ запрещён. Проверь Firestore Rules и структуру данных.");
+        showStatus("Доступ запрещён. Проверь правила Firestore.");
+      } else if (error.code === "failed-precondition") {
+        showStatus("Firebase требует дополнительную настройку. Проверь ошибку в консоли.");
       } else {
-        status("Ошибка: " + (error.message || "не удалось загрузить чат."));
+        showStatus("Ошибка: " + (error.message || "не удалось загрузить чат."));
       }
     }
 
     function formatTime(timestamp) {
       if (!timestamp || typeof timestamp.toDate !== "function") return "";
+
       return timestamp.toDate().toLocaleTimeString("ru-RU", {
         hour: "2-digit",
         minute: "2-digit"
@@ -169,8 +191,9 @@
       const container = $("messages");
       container.replaceChildren();
 
-      snapshot.forEach(messageDoc => {
+      for (const messageDoc of snapshot.docs) {
         const data = messageDoc.data();
+
         const bubble = document.createElement("div");
         bubble.className = "message" +
           (data.uid === currentUser.uid ? " mine" : "");
@@ -182,7 +205,6 @@
           : "@" + targetUsername;
 
         const text = document.createElement("div");
-        text.className = "messageText";
         text.textContent = data.text || "";
 
         const time = document.createElement("div");
@@ -191,49 +213,48 @@
 
         bubble.append(sender, text, time);
         container.append(bubble);
-      });
+      }
 
       container.scrollTop = container.scrollHeight;
     }
 
     async function startChat(user) {
-      if (starting) return;
+      if (starting || startedForUid === user.uid) return;
       starting = true;
 
       try {
         if (!targetUid) {
-          status("Не указан пользователь. Вернись назад и найди человека.");
+          showStatus("Не указан пользователь. Вернись на главную страницу.");
           return;
         }
 
         if (targetUid === user.uid) {
-          status("Нельзя открыть чат с самим собой.");
+          showStatus("Нельзя написать самому себе.");
           return;
         }
 
-        const targetProfile = await getDoc(doc(db, "users", targetUid));
+        const targetDoc = await getDoc(doc(db, "users", targetUid));
 
-        if (!targetProfile.exists()) {
-          status("Этот пользователь не найден.");
+        if (!targetDoc.exists()) {
+          showStatus("Пользователь не найден.");
           return;
         }
 
-        targetUsername = targetProfile.data().username || "Пользователь";
+        targetUsername = targetDoc.data().username || "пользователь";
         $("chatName").textContent = "@" + targetUsername;
 
-        const myProfile = await getDoc(doc(db, "users", user.uid));
-        if (!myProfile.exists()) {
-          status("Твой профиль не найден. Выйди и войди снова.");
+        const myDoc = await getDoc(doc(db, "users", user.uid));
+
+        if (!myDoc.exists()) {
+          showStatus("Твой профиль не найден. Попробуй выйти и войти снова.");
           return;
         }
 
-        // ID всегда формируется в одном порядке у обоих участников.
         const members = [user.uid, targetUid].sort();
         chatId = members[0] + "__" + members[1];
 
         const chatRef = doc(db, "chats", chatId);
 
-        // Транзакция помогает избежать повторного создания чата.
         await runTransaction(db, async transaction => {
           const existing = await transaction.get(chatRef);
 
@@ -243,26 +264,34 @@
               createdAt: serverTimestamp()
             });
           } else {
-            const existingMembers = existing.data().members || [];
-            if (!existingMembers.includes(user.uid) ||
-                !existingMembers.includes(targetUid)) {
-              throw new Error("Участники чата не совпадают.");
+            const savedMembers = existing.data().members || [];
+
+            if (
+              savedMembers.length !== 2 ||
+              !savedMembers.includes(user.uid) ||
+              !savedMembers.includes(targetUid)
+            ) {
+              throw new Error("Не совпадают участники этого чата.");
             }
           }
         });
 
-        if (stopListening) stopListening();
+        if (stopMessagesListener) stopMessagesListener();
 
         const messagesQuery = query(
           collection(db, "chats", chatId, "messages"),
           orderBy("createdAt", "asc")
         );
 
-        stopListening = onSnapshot(messagesQuery, snapshot => {
+        stopMessagesListener = onSnapshot(messagesQuery, snapshot => {
           renderMessages(snapshot);
-          status(snapshot.empty ? "Пока нет сообщений. Напиши первым!" : "");
+
+          showStatus(snapshot.empty
+            ? "Здесь пока нет сообщений. Напиши первым!"
+            : "");
         }, showError);
 
+        startedForUid = user.uid;
       } catch (error) {
         showError(error);
       } finally {
@@ -299,13 +328,19 @@
       currentUser = user;
 
       if (!user) {
-        status("Сначала войди в Chatly.");
-        const back = document.createElement("a");
-        back.href = "index.html";
-        back.textContent = " Перейти ко входу";
-        $("status").append(back);
+        if (stopMessagesListener) {
+          stopMessagesListener();
+          stopMessagesListener = null;
+        }
+
         $("messageInput").disabled = true;
         $("sendBtn").disabled = true;
+        showStatus("Сначала войди в Chatly.");
+
+        const link = document.createElement("a");
+        link.href = "index.html";
+        link.textContent = "Перейти ко входу";
+        $("status").append(" ", link);
         return;
       }
 
