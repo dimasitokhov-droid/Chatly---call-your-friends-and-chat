@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101522">
   <title>Chatly — чаты и сообщения</title>
+
   <style>
     * { box-sizing: border-box; }
 
@@ -98,7 +99,8 @@
     .entry:last-child { border-bottom: 0; }
     .entryInfo { min-width: 0; overflow-wrap: anywhere; }
     .entry button { width: auto; min-width: 95px; margin: 0; }
-    #authStatus, #searchStatus, #chatsStatus {
+
+    #authStatus, #searchStatus, #recentUsersStatus {
       overflow-wrap: anywhere;
     }
 
@@ -109,6 +111,7 @@
     }
   </style>
 </head>
+
 <body>
   <header>
     <div class="logo">Chatly 💬</div>
@@ -133,6 +136,7 @@
 
       <input id="email" type="email"
         placeholder="Email" autocomplete="email">
+
       <input id="password" type="password"
         placeholder="Пароль" autocomplete="current-password">
 
@@ -140,6 +144,7 @@
       <button id="registerBtn" class="secondary">
         Создать аккаунт
       </button>
+
       <p id="authStatus" role="status" aria-live="polite"></p>
     </section>
 
@@ -151,27 +156,39 @@
 
       <section class="panel">
         <h2>🔎 Найти пользователя</h2>
+
         <input id="searchUsername"
-          placeholder="Имя пользователя" maxlength="20">
+          placeholder="Имя пользователя"
+          maxlength="20"
+          autocomplete="off">
+
         <button id="searchBtn">Найти</button>
+
         <p id="searchStatus" role="status" aria-live="polite"></p>
         <div id="searchResult"></div>
       </section>
 
       <section class="panel">
-        <h2>💬 Мои чаты</h2>
-        <p>Твои личные переписки.</p>
-        <div id="myChatsList"></div>
-        <p id="chatsStatus" role="status" aria-live="polite">
-          Загружаем чаты…
+        <h2>🕘 Недавно введённые ники</h2>
+        <p>Здесь только пользователи, которых ты искал.</p>
+
+        <div id="recentUsersList"></div>
+
+        <p id="recentUsersStatus" role="status" aria-live="polite">
+          Пока никого нет.
         </p>
+
+        <button id="clearRecentBtn" class="secondary">
+          Очистить историю
+        </button>
       </section>
     </div>
   </main>
 
   <script type="module">
-    import { initializeApp } from
-      "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import {
+      initializeApp
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 
     import {
       getAuth,
@@ -180,22 +197,15 @@
       onAuthStateChanged,
       signOut,
       updateProfile
-    } from
-      "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
     import {
       getFirestore,
       doc,
       getDoc,
-      setDoc,
-      serverTimestamp,
-      collection,
-      query,
-      where,
-      onSnapshot,
-      runTransaction
-    } from
-      "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+      runTransaction,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
@@ -210,43 +220,41 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+
     const $ = id => document.getElementById(id);
 
-    let stopChatsListener = null;
     let authViewVersion = 0;
-    let chatLoadVersion = 0;
     let searchVersion = 0;
 
     function showError(error) {
       console.error("Chatly error:", error);
 
-      const code = error?.code || "";
-
       const messages = {
-        "auth/email-already-in-use": "Этот email уже используется.",
-        "auth/invalid-email": "Проверь правильность email.",
-        "auth/weak-password": "Пароль должен содержать минимум 6 символов.",
-        "auth/invalid-credential": "Неверный email или пароль.",
-        "auth/too-many-requests": "Слишком много попыток. Попробуй позже.",
-        "auth/network-request-failed": "Проверь подключение к интернету.",
+        "auth/email-already-in-use":
+          "Этот email уже используется.",
+        "auth/invalid-email":
+          "Проверь правильность email.",
+        "auth/weak-password":
+          "Пароль должен содержать минимум 6 символов.",
+        "auth/invalid-credential":
+          "Неверный email или пароль.",
+        "auth/too-many-requests":
+          "Слишком много попыток. Попробуй позже.",
+        "auth/network-request-failed":
+          "Проверь подключение к интернету.",
         "permission-denied":
           "Firebase отказал в доступе. Проверь Firestore Rules.",
-        "unavailable": "Firebase недоступен. Проверь интернет.",
-        "already-exists": "Это имя пользователя уже занято."
+        "unavailable":
+          "Firebase недоступен. Проверь интернет."
       };
 
-      return messages[code] ||
+      return messages[error?.code] ||
         error?.message ||
         "Произошла неизвестная ошибка.";
     }
 
-    function stopListeningToChats() {
-      chatLoadVersion++;
-
-      if (stopChatsListener) {
-        stopChatsListener();
-        stopChatsListener = null;
-      }
+    function normalizeUsername(value) {
+      return value.trim().toLowerCase();
     }
 
     function openChat(uid) {
@@ -278,9 +286,85 @@
       container.append(row);
     }
 
-    function normalizeUsername(value) {
-      return value.trim().toLowerCase();
+    // История хранится отдельно для каждого аккаунта на устройстве.
+    function recentStorageKey() {
+      return auth.currentUser
+        ? "chatly_recent_usernames_" + auth.currentUser.uid
+        : null;
     }
+
+    function getRecentUsers() {
+      const key = recentStorageKey();
+      if (!key) return [];
+
+      try {
+        const value = JSON.parse(localStorage.getItem(key) || "[]");
+        return Array.isArray(value) ? value : [];
+      } catch (error) {
+        console.error("Ошибка чтения истории:", error);
+        return [];
+      }
+    }
+
+    function saveRecentUser(username, uid) {
+      const key = recentStorageKey();
+      if (!key || !uid || !username) return;
+
+      try {
+        const recent = getRecentUsers()
+          .filter(item => item && item.uid !== uid);
+
+        recent.unshift({ username, uid });
+
+        localStorage.setItem(
+          key,
+          JSON.stringify(recent.slice(0, 20))
+        );
+
+        renderRecentUsers();
+      } catch (error) {
+        console.error("Не удалось сохранить историю:", error);
+        $("recentUsersStatus").textContent =
+          "Не удалось сохранить историю в браузере.";
+      }
+    }
+
+    function renderRecentUsers() {
+      const list = $("recentUsersList");
+      const status = $("recentUsersStatus");
+
+      list.replaceChildren();
+
+      const recent = getRecentUsers();
+
+      if (!recent.length) {
+        status.textContent = "Пока никого нет. Найди пользователя выше.";
+        return;
+      }
+
+      status.textContent = "Последние найденные пользователи";
+
+      for (const item of recent) {
+        if (!item || !item.uid || !item.username) continue;
+
+        addUserRow(
+          list,
+          item.username,
+          item.uid,
+          "Недавно искал"
+        );
+      }
+    }
+
+    $("clearRecentBtn").addEventListener("click", () => {
+      const key = recentStorageKey();
+
+      if (key) {
+        localStorage.removeItem(key);
+      }
+
+      renderRecentUsers();
+    });
 
     // Вход в существующий аккаунт.
     $("loginBtn").addEventListener("click", async () => {
@@ -305,7 +389,7 @@
       }
     });
 
-    // Регистрация и атомарное резервирование имени в Firestore.
+    // Регистрация и резервирование ника.
     $("registerBtn").addEventListener("click", async () => {
       const username = normalizeUsername($("username").value);
       const email = $("email").value.trim();
@@ -375,7 +459,7 @@
 
           if (createdUser) {
             $("authStatus").textContent +=
-              " Аккаунт мог быть создан без профиля. Не регистрируйся повторно с тем же email; сначала проверь вход и профиль в Firebase.";
+              " Аккаунт мог создаться без профиля. Попробуй войти в него.";
           }
         }
       } finally {
@@ -392,7 +476,7 @@
       }
     });
 
-    // Поиск пользователя по имени.
+    // Поиск пользователя по нику.
     async function searchUser() {
       const version = ++searchVersion;
       const username = normalizeUsername($("searchUsername").value);
@@ -430,13 +514,21 @@
 
         const uid = usernameSnapshot.data().uid;
 
+        if (!uid) {
+          $("searchStatus").textContent =
+            "У этого ника отсутствует профиль.";
+          return;
+        }
+
         if (uid === currentUser.uid) {
           $("searchStatus").textContent =
             "Это твой собственный аккаунт.";
           return;
         }
 
-        const profileSnapshot = await getDoc(doc(db, "users", uid));
+        const profileSnapshot = await getDoc(
+          doc(db, "users", uid)
+        );
 
         if (version !== searchVersion) return;
 
@@ -446,13 +538,17 @@
           return;
         }
 
+        const foundUsername =
+          profileSnapshot.data().username || username;
+
         addUserRow(
           $("searchResult"),
-          profileSnapshot.data().username || username,
+          foundUsername,
           uid,
           "Личная переписка без заявок в друзья"
         );
 
+        saveRecentUser(foundUsername, uid);
         $("searchStatus").textContent = "";
       } catch (error) {
         if (version === searchVersion) {
@@ -468,116 +564,14 @@
     $("searchBtn").addEventListener("click", searchUser);
 
     $("searchUsername").addEventListener("keydown", event => {
-      if (event.key === "Enter") searchUser();
+      if (event.key === "Enter") {
+        searchUser();
+      }
     });
-
-    // Подписка на чаты текущего пользователя.
-    function loadMyChats(user) {
-      stopListeningToChats();
-
-      const version = chatLoadVersion;
-      $("myChatsList").replaceChildren();
-      $("chatsStatus").textContent = "Загружаем чаты…";
-
-      const chatsQuery = query(
-        collection(db, "chats"),
-        where("members", "array-contains", user.uid)
-      );
-
-      stopChatsListener = onSnapshot(
-        chatsQuery,
-        async snapshot => {
-          if (
-            version !== chatLoadVersion ||
-            !auth.currentUser ||
-            auth.currentUser.uid !== user.uid
-          ) return;
-
-          $("myChatsList").replaceChildren();
-
-          if (snapshot.empty) {
-            $("chatsStatus").textContent =
-              "Пока нет чатов. Найди пользователя и нажми «Написать».";
-            return;
-          }
-
-          $("chatsStatus").textContent = "Загружаем участников…";
-
-          const chats = snapshot.docs;
-
-          const rows = await Promise.all(chats.map(async chatSnapshot => {
-            const members = chatSnapshot.data().members;
-
-            if (!Array.isArray(members)) return null;
-
-            const otherUid = members.find(uid => uid !== user.uid);
-
-            if (!otherUid) return null;
-
-            try {
-              const profileSnapshot = await getDoc(
-                doc(db, "users", otherUid)
-              );
-
-              if (!profileSnapshot.exists()) {
-                return {
-                  uid: otherUid,
-                  username: "пользователь",
-                  subtitle: "Профиль не найден"
-                };
-              }
-
-              return {
-                uid: otherUid,
-                username: profileSnapshot.data().username || "пользователь",
-                subtitle: "Личная переписка"
-              };
-            } catch (error) {
-              console.error("Ошибка загрузки профиля:", error);
-              return null;
-            }
-          }));
-
-          if (
-            version !== chatLoadVersion ||
-            !auth.currentUser ||
-            auth.currentUser.uid !== user.uid
-          ) return;
-
-          $("myChatsList").replaceChildren();
-
-          for (const row of rows) {
-            if (!row) continue;
-
-            addUserRow(
-              $("myChatsList"),
-              row.username,
-              row.uid,
-              row.subtitle
-            );
-          }
-
-          $("chatsStatus").textContent =
-            $("myChatsList").childElementCount
-              ? "Твои переписки"
-              : "Не удалось загрузить участников чатов.";
-        },
-        error => {
-          if (version !== chatLoadVersion) return;
-
-          console.error("Ошибка списка чатов:", error);
-          $("myChatsList").replaceChildren();
-          $("chatsStatus").textContent =
-            "Не удалось загрузить чаты: " + showError(error);
-        }
-      );
-    }
 
     // Обновление интерфейса при входе и выходе.
     onAuthStateChanged(auth, async user => {
       const version = ++authViewVersion;
-
-      stopListeningToChats();
       searchVersion++;
 
       $("authPanel").classList.toggle("hidden", !!user);
@@ -586,16 +580,19 @@
 
       $("searchResult").replaceChildren();
       $("searchStatus").textContent = "";
-      $("myChatsList").replaceChildren();
+      $("recentUsersList").replaceChildren();
 
       if (!user) {
         $("myUsername").textContent = "";
-        $("chatsStatus").textContent =
-          "Войди, чтобы увидеть свои чаты.";
+        $("recentUsersStatus").textContent =
+          "Войди, чтобы увидеть историю поиска.";
         return;
       }
 
-      $("chatsStatus").textContent = "Загружаем чаты…";
+      $("myUsername").textContent =
+        user.displayName || "пользователь";
+
+      $("recentUsersStatus").textContent = "Загружаем историю…";
 
       try {
         const profileSnapshot = await getDoc(
@@ -606,26 +603,22 @@
 
         if (profileSnapshot.exists()) {
           $("myUsername").textContent =
-            profileSnapshot.data().username || user.displayName || "пользователь";
+            profileSnapshot.data().username ||
+            user.displayName ||
+            "пользователь";
         } else {
-          $("myUsername").textContent =
-            user.displayName || "пользователь";
-
-          $("chatsStatus").textContent =
-            "Профиль не найден. Возможно, регистрация не завершилась.";
-          return;
+          $("recentUsersStatus").textContent =
+            "Профиль не найден. Поиск может быть недоступен.";
         }
 
-        loadMyChats(user);
+        renderRecentUsers();
       } catch (error) {
         if (version !== authViewVersion) return;
 
         console.error("Ошибка загрузки профиля:", error);
-        $("myUsername").textContent =
-          user.displayName || "пользователь";
 
-        $("chatsStatus").textContent =
-          "Ошибка загрузки профиля: " + showError(error);
+        $("recentUsersStatus").textContent =
+          "Не удалось загрузить профиль: " + showError(error);
       }
     });
   </script>
