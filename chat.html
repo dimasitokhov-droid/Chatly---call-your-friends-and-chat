@@ -2,617 +2,605 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chatly — Чат</title>
-
-  <style>
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      background: #10111a;
-      color: #f7f7fb;
-      font-family: Arial, sans-serif;
-    }
-
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 14px;
-      background: #191a27;
-      border-bottom: 1px solid #303144;
-    }
-
-    button {
-      border: 0;
-      border-radius: 12px;
-      padding: 12px;
-      background: #7657ed;
-      color: white;
-      font-size: 14px;
-      cursor: pointer;
-    }
-
-    button:disabled {
-      opacity: .5;
-      cursor: wait;
-    }
-
-    #back {
-      background: #303144;
-    }
-
-    #username {
-      font-weight: bold;
-      overflow-wrap: anywhere;
-    }
-
-    #status {
-      color: #b9b8ca;
-      font-size: 12px;
-      margin-top: 4px;
-    }
-
-    #messages {
-      min-height: calc(100dvh - 190px);
-      padding: 16px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .message {
-      max-width: 84%;
-      padding: 11px 13px;
-      border-radius: 16px;
-      background: #252638;
-      overflow-wrap: anywhere;
-      align-self: flex-start;
-    }
-
-    .message.mine {
-      background: #6548d9;
-      align-self: flex-end;
-    }
-
-    .sender {
-      font-size: 12px;
-      font-weight: bold;
-      opacity: .8;
-      margin-bottom: 6px;
-    }
-
-    .message-text {
-      white-space: pre-wrap;
-      line-height: 1.4;
-    }
-
-    .message img {
-      display: block;
-      max-width: 100%;
-      width: auto;
-      max-height: 360px;
-      object-fit: contain;
-      border-radius: 10px;
-    }
-
-    .time {
-      margin-top: 7px;
-      text-align: right;
-      font-size: 11px;
-      opacity: .7;
-    }
-
-    #composer {
-      position: sticky;
-      bottom: 0;
-      background: #191a27;
-      border-top: 1px solid #303144;
-      padding: 10px;
-    }
-
-    .tools {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 9px;
-    }
-
-    .tools button {
-      flex: 1;
-      background: #303144;
-    }
-
-    .write-row {
-      display: flex;
-      gap: 8px;
-    }
-
-    #messageInput {
-      min-width: 0;
-      flex: 1;
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px solid #414258;
-      outline: none;
-      background: #10111a;
-      color: white;
-      font-size: 16px;
-    }
-
-    #send {
-      min-width: 76px;
-    }
-
-    #notice {
-      padding: 8px 12px;
-      color: #ffcc8a;
-      font-size: 13px;
-      overflow-wrap: anywhere;
-    }
-
-    .empty {
-      margin: auto;
-      text-align: center;
-      color: #aaa9bd;
-    }
-
-    input[type="file"] {
-      display: none;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chatly — Чат</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#10111a;color:#f7f7fb;font-family:Arial,sans-serif}
+header{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:12px;padding:14px;background:#191a27;border-bottom:1px solid #303144}
+button{border:0;border-radius:12px;padding:12px;background:#7657ed;color:white;font-size:14px;cursor:pointer}
+button:disabled{opacity:.5}
+#back{background:#303144}
+#username{font-weight:bold;overflow-wrap:anywhere}
+#status{color:#b9b8ca;font-size:12px;margin-top:4px}
+#callPanel{padding:12px;background:#191a27;border-bottom:1px solid #303144}
+#callPanel[hidden],[hidden]{display:none!important}
+#callStatus{font-size:14px;color:#d8d1ff;margin-bottom:10px}
+.call-buttons{display:flex;gap:8px;flex-wrap:wrap}
+.call-buttons button{flex:1 1 125px}
+#answerButton{background:#248a58}
+#rejectButton,#hangupButton{background:#b7354b}
+#muteButton{background:#303144}
+#messages{height:calc(100dvh - 255px);min-height:240px;overflow-y:auto;padding:16px 12px;display:flex;flex-direction:column;gap:12px}
+.message{max-width:84%;padding:11px 13px;border-radius:16px;background:#252638;overflow-wrap:anywhere;align-self:flex-start}
+.message.mine{background:#6548d9;align-self:flex-end}
+.sender{font-size:12px;font-weight:bold;opacity:.8;margin-bottom:6px}
+.message-text{white-space:pre-wrap;line-height:1.4}
+.message img{display:block;max-width:100%;max-height:360px;border-radius:10px;object-fit:contain}
+.time{margin-top:7px;text-align:right;font-size:11px;opacity:.7}
+#composer{position:sticky;bottom:0;background:#191a27;border-top:1px solid #303144;padding:10px}
+.tools{display:flex;gap:8px;margin-bottom:9px}
+.tools button{flex:1;background:#303144}
+.write-row{display:flex;gap:8px}
+#messageInput{min-width:0;flex:1;padding:12px;border-radius:12px;border:1px solid #414258;outline:none;background:#10111a;color:white;font-size:16px}
+#send{min-width:76px}
+#notice{padding:8px 12px;color:#ffcc8a;font-size:13px;overflow-wrap:anywhere}
+.empty{margin:auto;text-align:center;color:#aaa9bd}
+input[type=file]{display:none}
+</style>
 </head>
-
 <body>
-  <header>
-    <button id="back" type="button">←</button>
-    <div>
-      <div id="username">Загрузка чата…</div>
-      <div id="status">Подключение к Firebase</div>
-    </div>
-  </header>
+<header>
+  <button id="back" type="button">←</button>
+  <div>
+    <div id="username">Загрузка чата…</div>
+    <div id="status">Подключение к Firebase</div>
+  </div>
+</header>
 
-  <main id="messages">
-    <div class="empty">Загрузка сообщений…</div>
-  </main>
+<section id="callPanel" hidden>
+  <div id="callStatus">Звонок не активен</div>
+  <div class="call-buttons">
+    <button id="callButton" type="button">📞 Позвонить</button>
+    <button id="answerButton" type="button" hidden>✅ Принять</button>
+    <button id="rejectButton" type="button" hidden>❌ Отклонить</button>
+    <button id="muteButton" type="button" hidden>🎙️ Выключить микрофон</button>
+    <button id="hangupButton" type="button" hidden>🔴 Завершить</button>
+  </div>
+  <audio id="remoteAudio" autoplay playsinline></audio>
+</section>
 
-  <div id="notice" role="status"></div>
+<main id="messages"><div class="empty">Загрузка сообщений…</div></main>
+<div id="notice" role="status"></div>
 
-  <section id="composer">
-    <div class="tools">
-      <button id="gallery" type="button">🖼️ Галерея</button>
-      <button id="camera" type="button">📷 Камера</button>
-    </div>
+<section id="composer">
+  <div class="tools">
+    <button id="gallery" type="button">🖼️ Галерея</button>
+    <button id="camera" type="button">📷 Камера</button>
+  </div>
+  <input id="galleryInput" type="file" accept="image/*">
+  <input id="cameraInput" type="file" accept="image/*" capture="environment">
+  <form id="messageForm" class="write-row">
+    <input id="messageInput" type="text" maxlength="5000" placeholder="Напишите сообщение…" autocomplete="off">
+    <button id="send" type="submit">Отправить</button>
+  </form>
+</section>
 
-    <input
-      id="galleryInput"
-      type="file"
-      accept="image/*"
-    >
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import {getAuth,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import {
+  getFirestore,doc,getDoc,runTransaction,collection,addDoc,
+  query,orderBy,onSnapshot,serverTimestamp,updateDoc,
+  setDoc,where,limit
+} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+import {getStorage,ref,uploadBytes,getDownloadURL} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
 
-    <input
-      id="cameraInput"
-      type="file"
-      accept="image/*"
-      capture="environment"
-    >
+const firebaseConfig={
+  apiKey:"AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
+  authDomain:"chatly-19613.firebaseapp.com",
+  projectId:"chatly-19613",
+  storageBucket:"chatly-19613.firebasestorage.app",
+  messagingSenderId:"1080401916394",
+  appId:"1:1080401916394:web:815e66c78ced380b4c8293",
+  measurementId:"G-WJ2NPP9T45"
+};
 
-    <form id="messageForm" class="write-row">
-      <input
-        id="messageInput"
-        type="text"
-        maxlength="5000"
-        placeholder="Напишите сообщение…"
-        autocomplete="off"
-      >
-      <button id="send" type="submit">Отправить</button>
-    </form>
-  </section>
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getFirestore(app);
+const storage=getStorage(app);
+const $=id=>document.getElementById(id);
 
-  <script type="module">
-    import { initializeApp }
-      from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+const targetUid=new URLSearchParams(location.search).get("uid");
+const usernameEl=$("username");
+const statusEl=$("status");
+const messagesEl=$("messages");
+const noticeEl=$("notice");
+const inputEl=$("messageInput");
+const sendBtn=$("send");
+const galleryBtn=$("gallery");
+const cameraBtn=$("camera");
+const galleryInput=$("galleryInput");
+const cameraInput=$("cameraInput");
 
-    import {
-      getAuth,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+let currentUser=null;
+let targetUser=null;
+let chatId=null;
+let stopMessages=null;
+let stopIncomingCalls=null;
+let stopActiveCall=null;
+let stopCandidates=null;
+let busy=false;
+let activeCallId=null;
+let peer=null;
+let localStream=null;
+let remoteDescriptionSet=false;
+let queuedCandidates=[];
+let isMuted=false;
+let handlingCall=false;
 
-    import {
-      getFirestore,
-      doc,
-      getDoc,
-      setDoc,
-      runTransaction,
-      collection,
-      addDoc,
-      query,
-      orderBy,
-      onSnapshot,
-      serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+const rtcConfig={
+  iceServers:[{urls:"stun:stun.l.google.com:19302"}]
+};
 
-    import {
-      getStorage,
-      ref,
-      uploadBytes,
-      getDownloadURL
-    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
+function notice(message){noticeEl.textContent=message||""}
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
-      authDomain: "chatly-19613.firebaseapp.com",
-      projectId: "chatly-19613",
-      storageBucket: "chatly-19613.firebasestorage.app",
-      messagingSenderId: "1080401916394",
-      appId: "1:1080401916394:web:815e66c78ced380b4c8293",
-      measurementId: "G-WJ2NPP9T45"
-    };
+function explainError(error){
+  console.error("Chatly error:",error);
+  const code=error?.code||"";
+  const messages={
+    "permission-denied":"Firebase отказал в доступе. Проверь Firestore Rules.",
+    "storage/unauthorized":"Нет доступа к фотографиям. Проверь Storage Rules.",
+    "storage/bucket-not-found":"Хранилище Firebase Storage не найдено.",
+    "auth/network-request-failed":"Проверь подключение к интернету.",
+    "unavailable":"Firebase временно недоступен. Попробуй ещё раз.",
+    "not-allowed":"Браузер не разрешил доступ к микрофону.",
+    "NotAllowedError":"Разреши Chatly использовать микрофон в настройках браузера.",
+    "NotFoundError":"Микрофон не найден."
+  };
+  notice(messages[code]||messages[error?.name]||
+    ("Ошибка: "+code+" "+(error?.message||"Не удалось выполнить действие.")));
+}
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    const storage = getStorage(app);
+$("back").addEventListener("click",()=>location.href="index.html");
 
-    const $ = id => document.getElementById(id);
+function showEmpty(message){
+  messagesEl.replaceChildren();
+  const div=document.createElement("div");
+  div.className="empty";
+  div.textContent=message;
+  messagesEl.appendChild(div);
+}
 
-    const usernameEl = $("username");
-    const statusEl = $("status");
-    const messagesEl = $("messages");
-    const noticeEl = $("notice");
-    const inputEl = $("messageInput");
-    const sendBtn = $("send");
-    const galleryBtn = $("gallery");
-    const cameraBtn = $("camera");
-    const galleryInput = $("galleryInput");
-    const cameraInput = $("cameraInput");
+function formatTime(timestamp){
+  if(!timestamp||typeof timestamp.toDate!=="function")return "";
+  return timestamp.toDate().toLocaleString("ru-RU",{
+    day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"
+  });
+}
 
-    const targetUid =
-      new URLSearchParams(location.search).get("uid");
+function renderMessage(data){
+  const wrap=document.createElement("article");
+  wrap.className="message"+(data.uid===currentUser.uid?" mine":"");
 
-    let currentUser = null;
-    let targetUser = null;
-    let chatId = null;
-    let stopMessages = null;
-    let busy = false;
+  const sender=document.createElement("div");
+  sender.className="sender";
+  sender.textContent=data.uid===currentUser.uid?"Вы":(targetUser?.username||"Собеседник");
+  wrap.appendChild(sender);
 
-    function notice(message) {
-      noticeEl.textContent = message || "";
-    }
+  if(data.type==="image"){
+    const img=document.createElement("img");
+    img.src=data.imageUrl;
+    img.alt="Фотография";
+    img.loading="lazy";
+    img.addEventListener("error",()=>{img.alt="Не удалось загрузить фотографию"});
+    wrap.appendChild(img);
+  }else{
+    const text=document.createElement("div");
+    text.className="message-text";
+    text.textContent=data.text||"";
+    wrap.appendChild(text);
+  }
 
-    function explainError(error) {
-      console.error("Chatly Firebase error:", error);
+  const time=document.createElement("div");
+  time.className="time";
+  time.textContent=formatTime(data.createdAt);
+  wrap.appendChild(time);
+  return wrap;
+}
 
-      const code = error?.code || "";
+async function openOrCreateChat(){
+  const ids=[currentUser.uid,targetUid].sort();
+  chatId=ids.join("__");
+  const chatRef=doc(db,"chats",chatId);
 
-      const messages = {
-        "permission-denied":
-          "Firebase отказал в доступе. Проверьте Firestore Rules и Storage Rules.",
-        "storage/unauthorized":
-          "Нет доступа к фотографиям. Проверьте Storage Rules.",
-        "storage/bucket-not-found":
-          "Хранилище не найдено. Проверьте Storage в Firebase Console.",
-        "storage/unknown":
-          "Ошибка загрузки фотографии. Проверьте интернет и настройки Storage.",
-        "auth/network-request-failed":
-          "Нет подключения к интернету.",
-        "not-found":
-          "Профиль или документ чата не найден.",
-        "unavailable":
-          "Firebase временно недоступен. Попробуйте ещё раз."
-      };
-
-      notice(messages[code] || (
-        "Ошибка: " + code + ". " +
-        (error?.message || "Не удалось выполнить действие.")
-      ));
-    }
-
-    $("back").addEventListener("click", () => {
-      location.href = "index.html";
-    });
-
-    function showEmpty(message) {
-      messagesEl.replaceChildren();
-
-      const div = document.createElement("div");
-      div.className = "empty";
-      div.textContent = message;
-
-      messagesEl.appendChild(div);
-    }
-
-    function formatTime(timestamp) {
-      if (!timestamp || typeof timestamp.toDate !== "function") {
-        return "";
+  await runTransaction(db,async transaction=>{
+    const snapshot=await transaction.get(chatRef);
+    if(!snapshot.exists()){
+      transaction.set(chatRef,{members:ids,createdAt:serverTimestamp()});
+    }else{
+      const data=snapshot.data();
+      if(!Array.isArray(data.members)||
+        !data.members.includes(currentUser.uid)||
+        !data.members.includes(targetUid)){
+        throw new Error("Участники чата не совпадают.");
       }
+    }
+  });
 
-      return timestamp.toDate().toLocaleString("ru-RU", {
-        day: "2-digit",
-        month: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit"
+  if(stopMessages)stopMessages();
+  const messagesQuery=query(
+    collection(db,"chats",chatId,"messages"),orderBy("createdAt","asc")
+  );
+
+  stopMessages=onSnapshot(messagesQuery,snapshot=>{
+    messagesEl.replaceChildren();
+    if(snapshot.empty){showEmpty("Пока нет сообщений. Напишите первым!");return}
+    snapshot.forEach(item=>messagesEl.appendChild(renderMessage(item.data())));
+    messagesEl.scrollTop=messagesEl.scrollHeight;
+  },explainError);
+
+  statusEl.textContent="Чат подключён";
+}
+
+async function sendText(event){
+  event.preventDefault();
+  const text=inputEl.value.trim();
+  if(!text||!chatId||busy)return;
+
+  busy=true;sendBtn.disabled=true;notice("");
+  try{
+    await addDoc(collection(db,"chats",chatId,"messages"),{
+      type:"text",text,uid:currentUser.uid,createdAt:serverTimestamp()
+    });
+    inputEl.value="";
+  }catch(error){explainError(error)}
+  finally{busy=false;sendBtn.disabled=false;inputEl.focus()}
+}
+
+async function sendImage(file){
+  if(!file||!chatId||busy)return;
+  if(!file.type.startsWith("image/")){notice("Выбери изображение.");return}
+  if(file.size>8*1024*1024){notice("Фото должно быть не больше 8 МБ.");return}
+
+  busy=true;galleryBtn.disabled=true;cameraBtn.disabled=true;sendBtn.disabled=true;
+  notice("Загрузка фотографии…");
+  try{
+    const extension=(file.name.split(".").pop()||"jpg")
+      .toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,8)||"jpg";
+    const fileName=Date.now()+"_"+Math.random().toString(36).slice(2)+"."+extension;
+    const imagePath=`chats/${chatId}/${currentUser.uid}/${fileName}`;
+    const imageRef=ref(storage,imagePath);
+    await uploadBytes(imageRef,file,{contentType:file.type});
+    const imageUrl=await getDownloadURL(imageRef);
+    await addDoc(collection(db,"chats",chatId,"messages"),{
+      type:"image",imageUrl,imagePath,uid:currentUser.uid,createdAt:serverTimestamp()
+    });
+    notice("Фотография отправлена.");
+  }catch(error){explainError(error)}
+  finally{
+    busy=false;galleryBtn.disabled=false;cameraBtn.disabled=false;sendBtn.disabled=false;
+    galleryInput.value="";cameraInput.value="";
+  }
+}
+
+$("messageForm").addEventListener("submit",sendText);
+galleryBtn.addEventListener("click",()=>galleryInput.click());
+cameraBtn.addEventListener("click",()=>cameraInput.click());
+galleryInput.addEventListener("change",()=>sendImage(galleryInput.files?.[0]));
+cameraInput.addEventListener("change",()=>sendImage(cameraInput.files?.[0]));
+
+/* ---------- Голосовые звонки WebRTC ---------- */
+
+function showCallControls({call=true,answer=false,reject=false,mute=false,hangup=false}={}){
+  $("callPanel").hidden=false;
+  $("callButton").hidden=!call;
+  $("answerButton").hidden=!answer;
+  $("rejectButton").hidden=!reject;
+  $("muteButton").hidden=!mute;
+  $("hangupButton").hidden=!hangup;
+}
+
+function setCallStatus(text){$("callStatus").textContent=text}
+
+async function getMicrophone(){
+  if(!navigator.mediaDevices?.getUserMedia){
+    throw new Error("Микрофон недоступен. Открой Chatly через HTTPS в браузере.");
+  }
+  return navigator.mediaDevices.getUserMedia({audio:true,video:false});
+}
+
+function closePeer(){
+  if(stopCandidates){stopCandidates();stopCandidates=null}
+  if(peer){peer.ontrack=null;peer.onicecandidate=null;peer.close();peer=null}
+  if(localStream){
+    localStream.getTracks().forEach(track=>track.stop());
+    localStream=null;
+  }
+  $("remoteAudio").srcObject=null;
+  remoteDescriptionSet=false;
+  queuedCandidates=[];
+  isMuted=false;
+  $("muteButton").textContent="🎙️ Выключить микрофон";
+}
+
+async function addRemoteCandidate(candidateData){
+  if(!peer||!candidateData?.candidate)return;
+  try{
+    const candidate=new RTCIceCandidate(candidateData.candidate);
+    if(remoteDescriptionSet){
+      await peer.addIceCandidate(candidate);
+    }else{
+      queuedCandidates.push(candidate);
+    }
+  }catch(error){console.warn("ICE candidate:",error)}
+}
+
+async function flushCandidates(){
+  remoteDescriptionSet=true;
+  for(const candidate of queuedCandidates){
+    try{await peer.addIceCandidate(candidate)}catch(error){console.warn(error)}
+  }
+  queuedCandidates=[];
+}
+
+function watchRemoteCandidates(callId,remoteUid){
+  if(stopCandidates)stopCandidates();
+  const candidatesQuery=query(
+    collection(db,"calls",callId,"candidates"),
+    where("senderUid","==",remoteUid)
+  );
+  stopCandidates=onSnapshot(candidatesQuery,snapshot=>{
+    snapshot.docChanges().forEach(change=>{
+      if(change.type==="added")addRemoteCandidate(change.doc.data());
+    });
+  },explainError);
+}
+
+function preparePeer(callId,remoteUid){
+  peer=new RTCPeerConnection(rtcConfig);
+
+  peer.ontrack=event=>{
+    const stream=event.streams?.[0];
+    if(stream)$("remoteAudio").srcObject=stream;
+    $("remoteAudio").play().catch(()=>notice("Нажми на экран, чтобы включить звук звонка."));
+  };
+
+  peer.onicecandidate=async event=>{
+    if(!event.candidate)return;
+    try{
+      await addDoc(collection(db,"calls",callId,"candidates"),{
+        senderUid:currentUser.uid,
+        candidate:event.candidate.toJSON(),
+        createdAt:serverTimestamp()
       });
+    }catch(error){console.warn("Не удалось отправить ICE candidate",error)}
+  };
+
+  peer.onconnectionstatechange=()=>{
+    if(!peer)return;
+    if(peer.connectionState==="connected"){
+      setCallStatus("Разговор начался");
+    }else if(peer.connectionState==="disconnected"){
+      setCallStatus("Соединение потеряно. Ожидаем восстановления…");
+    }else if(peer.connectionState==="failed"){
+      setCallStatus("Не удалось соединить устройства. Может понадобиться TURN-сервер.");
+    }
+  };
+
+  watchRemoteCandidates(callId,remoteUid);
+}
+
+async function startCall(){
+  if(!currentUser||!targetUid||!chatId||activeCallId||handlingCall)return;
+  handlingCall=true;
+  $("callButton").disabled=true;
+  notice("");
+  try{
+    localStream=await getMicrophone();
+    const callRef=doc(collection(db,"calls"));
+    activeCallId=callRef.id;
+
+    preparePeer(activeCallId,targetUid);
+    localStream.getTracks().forEach(track=>peer.addTrack(track,localStream));
+
+    const offer=await peer.createOffer();
+    await setDoc(callRef,{
+      callerUid:currentUser.uid,
+      calleeUid:targetUid,
+      chatId,
+      status:"ringing",
+      offer:{type:offer.type,sdp:offer.sdp},
+      createdAt:serverTimestamp()
+    });
+
+    showCallControls({call:false,hangup:true});
+    setCallStatus("Вызов… ожидаем ответа");
+    await peer.setLocalDescription(offer);
+    watchCallStatus(activeCallId);
+  }catch(error){
+    explainError(error);
+    await cleanupCall(false);
+  }finally{
+    handlingCall=false;
+    $("callButton").disabled=false;
+  }
+}
+
+function watchCallStatus(callId){
+  if(stopActiveCall){stopActiveCall();stopActiveCall=null}
+  stopActiveCall=onSnapshot(doc(db,"calls",callId),async snapshot=>{
+    if(!snapshot.exists()){
+      setCallStatus("Вызов завершён");
+      await cleanupCall(false);
+      return;
+    }
+    const data=snapshot.data();
+
+    if(data.status==="accepted"&&data.answer&&peer&&!peer.currentRemoteDescription){
+      try{
+        await peer.setRemoteDescription(new RTCSessionDescription(data.answer));
+        await flushCandidates();
+        setCallStatus("Соединяем…");
+      }catch(error){explainError(error)}
+    }else if(data.status==="rejected"){
+      setCallStatus("Вызов отклонён");
+      await cleanupCall(false);
+    }else if(data.status==="ended"){
+      setCallStatus("Собеседник завершил звонок");
+      await cleanupCall(false);
+    }
+  },explainError);
+}
+
+async function answerCall(){
+  if(!activeCallId||handlingCall)return;
+  handlingCall=true;
+  $("answerButton").disabled=true;
+  try{
+    const callRef=doc(db,"calls",activeCallId);
+    const snapshot=await getDoc(callRef);
+    if(!snapshot.exists())throw new Error("Вызов уже завершён.");
+    const data=snapshot.data();
+    if(data.calleeUid!==currentUser.uid||data.status!=="ringing"){
+      throw new Error("Этот вызов больше нельзя принять.");
     }
 
-    function renderMessage(data) {
-      const wrap = document.createElement("article");
+    localStream=await getMicrophone();
+    preparePeer(activeCallId,data.callerUid);
+    localStream.getTracks().forEach(track=>peer.addTrack(track,localStream));
 
-      wrap.className =
-        "message" +
-        (data.uid === currentUser.uid ? " mine" : "");
+    await peer.setRemoteDescription(new RTCSessionDescription(data.offer));
+    await flushCandidates();
 
-      const sender = document.createElement("div");
-      sender.className = "sender";
+    const answer=await peer.createAnswer();
+    await peer.setLocalDescription(answer);
+    await updateDoc(callRef,{
+      answer:{type:answer.type,sdp:answer.sdp},
+      status:"accepted",
+      acceptedAt:serverTimestamp()
+    });
 
-      sender.textContent =
-        data.uid === currentUser.uid
-          ? "Вы"
-          : (targetUser?.username || "Собеседник");
+    showCallControls({call:false,mute:true,hangup:true});
+    setCallStatus("Соединяем…");
+    watchCallStatus(activeCallId);
+  }catch(error){
+    explainError(error);
+    await cleanupCall(false);
+  }finally{
+    handlingCall=false;
+    $("answerButton").disabled=false;
+  }
+}
 
-      wrap.appendChild(sender);
-
-      if (data.type === "image") {
-        const img = document.createElement("img");
-
-        img.src = data.imageUrl;
-        img.alt = "Фотография";
-        img.loading = "lazy";
-
-        img.addEventListener("error", () => {
-          img.alt = "Не удалось загрузить фотографию";
-        });
-
-        wrap.appendChild(img);
-      } else {
-        const text = document.createElement("div");
-        text.className = "message-text";
-        text.textContent = data.text || "";
-
-        wrap.appendChild(text);
-      }
-
-      const time = document.createElement("div");
-      time.className = "time";
-      time.textContent = formatTime(data.createdAt);
-
-      wrap.appendChild(time);
-
-      return wrap;
-    }
-
-    async function openOrCreateChat() {
-      const ids = [currentUser.uid, targetUid].sort();
-      chatId = ids.join("__");
-
-      const chatRef = doc(db, "chats", chatId);
-
-      await runTransaction(db, async transaction => {
-        const snapshot = await transaction.get(chatRef);
-
-        if (!snapshot.exists()) {
-          transaction.set(chatRef, {
-            members: ids,
-            createdAt: serverTimestamp()
+async function endCall(rejected=false){
+  const callId=activeCallId;
+  if(callId){
+    try{
+      const callRef=doc(db,"calls",callId);
+      const snapshot=await getDoc(callRef);
+      if(snapshot.exists()){
+        const data=snapshot.data();
+        if(data.callerUid===currentUser?.uid||data.calleeUid===currentUser?.uid){
+          await updateDoc(callRef,{
+            status:rejected?"rejected":"ended",
+            endedAt:serverTimestamp()
           });
-        } else {
-          const data = snapshot.data();
-
-          if (
-            !Array.isArray(data.members) ||
-            !data.members.includes(currentUser.uid) ||
-            !data.members.includes(targetUid)
-          ) {
-            throw new Error(
-              "Состав участников существующего чата не совпадает."
-            );
-          }
         }
-      });
-
-      const messagesQuery = query(
-        collection(db, "chats", chatId, "messages"),
-        orderBy("createdAt", "asc")
-      );
-
-      if (stopMessages) stopMessages();
-
-      stopMessages = onSnapshot(
-        messagesQuery,
-        snapshot => {
-          messagesEl.replaceChildren();
-
-          if (snapshot.empty) {
-            showEmpty("Пока нет сообщений. Напишите первым!");
-            return;
-          }
-
-          snapshot.forEach(messageDoc => {
-            messagesEl.appendChild(
-              renderMessage(messageDoc.data())
-            );
-          });
-
-          messagesEl.scrollTop = messagesEl.scrollHeight;
-        },
-        error => {
-          explainError(error);
-          statusEl.textContent = "Ошибка загрузки сообщений";
-        }
-      );
-
-      statusEl.textContent = "Чат подключён";
-    }
-
-    async function sendText(event) {
-      event.preventDefault();
-
-      const text = inputEl.value.trim();
-
-      if (!text || !chatId || busy) return;
-
-      busy = true;
-      sendBtn.disabled = true;
-      notice("");
-
-      try {
-        await addDoc(
-          collection(db, "chats", chatId, "messages"),
-          {
-            type: "text",
-            text,
-            uid: currentUser.uid,
-            createdAt: serverTimestamp()
-          }
-        );
-
-        inputEl.value = "";
-      } catch (error) {
-        explainError(error);
-      } finally {
-        busy = false;
-        sendBtn.disabled = false;
-        inputEl.focus();
       }
-    }
+    }catch(error){explainError(error)}
+  }
+  await cleanupCall(true);
+}
 
-    async function sendImage(file) {
-      if (!file || !chatId || busy) return;
+async function cleanupCall(resetStatus=true){
+  if(stopActiveCall){stopActiveCall();stopActiveCall=null}
+  closePeer();
+  activeCallId=null;
+  handlingCall=false;
+  showCallControls({call:true});
+  if(resetStatus)setCallStatus("Звонок завершён");
+}
 
-      if (!file.type.startsWith("image/")) {
-        notice("Выберите файл изображения.");
-        return;
-      }
+$("callButton").addEventListener("click",startCall);
+$("answerButton").addEventListener("click",answerCall);
+$("rejectButton").addEventListener("click",()=>endCall(true));
+$("hangupButton").addEventListener("click",()=>endCall(false));
 
-      if (file.size > 8 * 1024 * 1024) {
-        notice("Фото должно быть не больше 8 МБ.");
-        return;
-      }
+$("muteButton").addEventListener("click",()=>{
+  if(!localStream)return;
+  isMuted=!isMuted;
+  localStream.getAudioTracks().forEach(track=>track.enabled=!isMuted);
+  $("muteButton").textContent=isMuted?"🔇 Включить микрофон":"🎙️ Выключить микрофон";
+});
 
-      busy = true;
-      galleryBtn.disabled = true;
-      cameraBtn.disabled = true;
-      sendBtn.disabled = true;
-      notice("Загрузка фотографии…");
+/* Слушаем входящие вызовы только для текущего пользователя. */
+function listenIncomingCalls(){
+  if(stopIncomingCalls){stopIncomingCalls();stopIncomingCalls=null}
+  const incomingQuery=query(
+    collection(db,"calls"),
+    where("calleeUid","==",currentUser.uid),
+    where("status","==","ringing"),
+    limit(10)
+  );
 
-      try {
-        const extension =
-          (file.name.split(".").pop() || "jpg")
-            .toLowerCase()
-            .replace(/[^a-z0-9]/g, "")
-            .slice(0, 8) || "jpg";
+  stopIncomingCalls=onSnapshot(incomingQuery,snapshot=>{
+    snapshot.docChanges().forEach(change=>{
+      if(change.type!=="added")return;
+      const call=change.doc.data();
+      if(call.callerUid===currentUser.uid)return;
+      if(call.chatId!==chatId)return;
+      if(activeCallId)return;
 
-        const fileName =
-          Date.now() + "_" +
-          Math.random().toString(36).slice(2) +
-          "." + extension;
-
-        const imagePath =
-          `chats/${chatId}/${currentUser.uid}/${fileName}`;
-
-        const imageRef = ref(storage, imagePath);
-
-        await uploadBytes(imageRef, file, {
-          contentType: file.type
-        });
-
-        const imageUrl = await getDownloadURL(imageRef);
-
-        await addDoc(
-          collection(db, "chats", chatId, "messages"),
-          {
-            type: "image",
-            imageUrl,
-            imagePath,
-            uid: currentUser.uid,
-            createdAt: serverTimestamp()
-          }
-        );
-
-        notice("Фотография отправлена.");
-      } catch (error) {
-        explainError(error);
-      } finally {
-        busy = false;
-        galleryBtn.disabled = false;
-        cameraBtn.disabled = false;
-        sendBtn.disabled = false;
-        galleryInput.value = "";
-        cameraInput.value = "";
-      }
-    }
-
-    $("messageForm").addEventListener("submit", sendText);
-
-    galleryBtn.addEventListener("click", () => {
-      galleryInput.click();
+      activeCallId=change.doc.id;
+      showCallControls({call:false,answer:true,reject:true});
+      setCallStatus("Входящий голосовой вызов от "+(targetUser?.username||"собеседника"));
+      watchCallStatus(activeCallId);
     });
+  },explainError);
+}
 
-    cameraBtn.addEventListener("click", () => {
-      cameraInput.click();
-    });
+onAuthStateChanged(auth,async user=>{
+  if(stopMessages){stopMessages();stopMessages=null}
+  if(stopIncomingCalls){stopIncomingCalls();stopIncomingCalls=null}
+  if(stopActiveCall){stopActiveCall();stopActiveCall=null}
+  closePeer();
+  currentUser=user;
+  activeCallId=null;
+  showCallControls({call:true});
 
-    galleryInput.addEventListener("change", () => {
-      sendImage(galleryInput.files?.[0]);
-    });
+  if(!user){
+    statusEl.textContent="Не выполнен вход";
+    notice("Войди в Chatly, чтобы открыть переписку.");
+    return;
+  }
 
-    cameraInput.addEventListener("change", () => {
-      sendImage(cameraInput.files?.[0]);
-    });
+  if(!targetUid||targetUid===user.uid){
+    notice("Некорректный UID собеседника.");
+    statusEl.textContent="Чат не найден";
+    return;
+  }
 
-    onAuthStateChanged(auth, async user => {
-      if (stopMessages) {
-        stopMessages();
-        stopMessages = null;
-      }
+  try{
+    statusEl.textContent="Загрузка профиля…";
+    const [ownSnapshot,targetSnapshot]=await Promise.all([
+      getDoc(doc(db,"users",user.uid)),
+      getDoc(doc(db,"users",targetUid))
+    ]);
 
-      currentUser = user;
+    if(!ownSnapshot.exists())throw new Error("Твой профиль не найден в users/"+user.uid);
+    if(!targetSnapshot.exists())throw new Error("Профиль собеседника не найден.");
 
-      if (!user) {
-        statusEl.textContent = "Не выполнен вход";
-        notice("Войдите в Chatly, чтобы открыть переписку.");
-        return;
-      }
+    targetUser=targetSnapshot.data();
+    usernameEl.textContent=targetUser.username||"Собеседник";
 
-      if (!targetUid || targetUid === user.uid) {
-        notice("Некорректный UID собеседника.");
-        statusEl.textContent = "Чат не найден";
-        return;
-      }
+    await openOrCreateChat();
+    listenIncomingCalls();
+  }catch(error){
+    explainError(error);
+    statusEl.textContent="Не удалось открыть чат";
+  }
+});
 
-      try {
-        statusEl.textContent = "Загрузка профиля…";
-
-        const [ownSnapshot, targetSnapshot] = await Promise.all([
-          getDoc(doc(db, "users", user.uid)),
-          getDoc(doc(db, "users", targetUid))
-        ]);
-
-        if (!ownSnapshot.exists()) {
-          throw new Error(
-            "Ваш профиль не найден в users/" + user.uid
-          );
-        }
-
-        if (!targetSnapshot.exists()) {
-          throw new Error("Профиль собеседника не найден.");
-        }
-
-        targetUser = targetSnapshot.data();
-
-        usernameEl.textContent =
-          targetUser.username || "Собеседник";
-
-        await openOrCreateChat();
-      } catch (error) {
-        explainError(error);
-        statusEl.textContent = "Не удалось открыть чат";
-      }
-    });
-  </script>
+window.addEventListener("pagehide",()=>{
+  if(stopMessages)stopMessages();
+  if(stopIncomingCalls)stopIncomingCalls();
+  if(stopActiveCall)stopActiveCall();
+  if(stopCandidates)stopCandidates();
+  closePeer();
+});
+</script>
 </body>
 </html>
