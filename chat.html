@@ -106,10 +106,12 @@ const targetUid=new URLSearchParams(location.search).get("uid");
 
 let currentUser=null,targetUser=null,chatId=null;
 let stopMessages=null,stopIncomingCalls=null,stopActiveCall=null;
-let stopCandidates=null,stopRemoteCandidates=null;
+let stopRemoteCandidates=null;
 let activeCallId=null,peer=null,localStream=null;
 let remoteDescriptionSet=false,queuedCandidates=[];
+let callDocumentReady=false,pendingLocalCandidates=[];
 let busy=false,handlingCall=false,isMuted=false;
+let callSessionToken=0;
 
 const rtcConfig={
   iceServers:[{urls:"stun:stun.l.google.com:19302"}]
@@ -117,52 +119,67 @@ const rtcConfig={
 
 function notice(text){$("notice").textContent=text||""}
 function setCallStatus(text){$("callStatus").textContent=text}
+
 function explainError(error){
   console.error("Chatly:",error);
   if(error?.code==="permission-denied"){
-    notice("Firebase отказал в доступе. Проверь Firestore Rules и права текущего пользователя.");
+    notice("Firebase отказал в доступе. Проверь Firestore Rules и UID участников чата.");
   }else if(error?.code==="storage/unauthorized"){
-    notice("Нет доступа к фотографиям. Проверь Storage Rules.");
+    notice("Нет доступа к фотографиям. Проверь Firebase Storage Rules.");
   }else if(error?.name==="NotAllowedError"){
     notice("Разреши браузеру использовать микрофон.");
+  }else if(error?.name==="NotFoundError"){
+    notice("Микрофон не найден на устройстве.");
   }else{
     notice("Ошибка: "+(error?.code||error?.message||"Не удалось выполнить действие."));
   }
 }
 
-$("back").addEventListener("click",()=>location.href="index.html");
+$("back").addEventListener("click",()=>{
+  if(activeCallId) void endCall(false);
+  location.href="index.html";
+});
 
 function showEmpty(text){
   $("messages").replaceChildren();
   const el=document.createElement("div");
-  el.className="empty";el.textContent=text;
+  el.className="empty";
+  el.textContent=text;
   $("messages").appendChild(el);
 }
+
 function formatTime(ts){
   if(!ts?.toDate)return "";
   return ts.toDate().toLocaleString("ru-RU",{
     day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"
   });
 }
+
 function renderMessage(data){
   const wrap=document.createElement("article");
   wrap.className="message"+(data.uid===currentUser.uid?" mine":"");
+
   const sender=document.createElement("div");
   sender.className="sender";
   sender.textContent=data.uid===currentUser.uid?"Вы":(targetUser?.username||"Собеседник");
   wrap.appendChild(sender);
 
-  if(data.type==="image"){
+  if(data.type==="image"&&data.imageUrl){
     const img=document.createElement("img");
-    img.src=data.imageUrl;img.alt="Фотография";img.loading="lazy";
+    img.src=data.imageUrl;
+    img.alt="Фотография";
+    img.loading="lazy";
     wrap.appendChild(img);
   }else{
     const text=document.createElement("div");
-    text.className="message-text";text.textContent=data.text||"";
+    text.className="message-text";
+    text.textContent=data.text||"";
     wrap.appendChild(text);
   }
+
   const time=document.createElement("div");
-  time.className="time";time.textContent=formatTime(data.createdAt);
+  time.className="time";
+  time.textContent=formatTime(data.createdAt);
   wrap.appendChild(time);
   return wrap;
 }
@@ -189,7 +206,10 @@ async function openOrCreateChat(){
     query(collection(db,"chats",chatId,"messages"),orderBy("createdAt","asc")),
     snap=>{
       $("messages").replaceChildren();
-      if(snap.empty){showEmpty("Пока нет сообщений. Напишите первым!");return}
+      if(snap.empty){
+        showEmpty("Пока нет сообщений. Напишите первым!");
+        return;
+      }
       snap.forEach(d=>$("messages").appendChild(renderMessage(d.data())));
       $("messages").scrollTop=$("messages").scrollHeight;
     },
@@ -202,45 +222,72 @@ async function sendText(event){
   event.preventDefault();
   const text=$("messageInput").value.trim();
   if(!text||!chatId||busy||!currentUser)return;
-  busy=true;$("send").disabled=true;
+
+  busy=true;
+  $("send").disabled=true;
   try{
     await addDoc(collection(db,"chats",chatId,"messages"),{
-      type:"text",text,uid:currentUser.uid,createdAt:serverTimestamp()
+      type:"text",
+      text,
+      uid:currentUser.uid,
+      createdAt:serverTimestamp()
     });
     $("messageInput").value="";
-  }catch(e){explainError(e)}
-  finally{busy=false;$("send").disabled=false}
+    notice("");
+  }catch(e){
+    explainError(e);
+  }finally{
+    busy=false;
+    $("send").disabled=false;
+  }
 }
 
 async function sendImage(file){
   if(!file||!chatId||busy)return;
-  if(!file.type.startsWith("image/")){notice("Выбери изображение.");return}
-  if(file.size>8*1024*1024){notice("Фото должно быть не больше 8 МБ.");return}
-  busy=true;notice("Загружаем фотографию…");
+  if(!file.type.startsWith("image/")){
+    notice("Выбери изображение.");
+    return;
+  }
+  if(file.size>8*1024*1024){
+    notice("Фото должно быть не больше 8 МБ.");
+    return;
+  }
+
+  busy=true;
+  notice("Загружаем фотографию…");
   try{
-    const name=Date.now()+"_"+Math.random().toString(36).slice(2)+".jpg";
+    const name=Date.now()+"_"+Math.random().toString(36).slice(2);
     const path=`chats/${chatId}/${currentUser.uid}/${name}`;
     const imageRef=ref(storage,path);
     await uploadBytes(imageRef,file,{contentType:file.type});
     const url=await getDownloadURL(imageRef);
+
     await addDoc(collection(db,"chats",chatId,"messages"),{
-      type:"image",imageUrl:url,imagePath:path,
-      uid:currentUser.uid,createdAt:serverTimestamp()
+      type:"image",
+      imageUrl:url,
+      imagePath:path,
+      uid:currentUser.uid,
+      createdAt:serverTimestamp()
     });
     notice("Фотография отправлена.");
-  }catch(e){explainError(e)}
-  finally{
+  }catch(e){
+    explainError(e);
+  }finally{
     busy=false;
-    $("galleryInput").value="";$("cameraInput").value="";
+    $("galleryInput").value="";
+    $("cameraInput").value="";
   }
 }
+
 $("messageForm").addEventListener("submit",sendText);
 $("gallery").addEventListener("click",()=>$("galleryInput").click());
 $("camera").addEventListener("click",()=>$("cameraInput").click());
 $("galleryInput").addEventListener("change",()=>sendImage($("galleryInput").files?.[0]));
 $("cameraInput").addEventListener("change",()=>sendImage($("cameraInput").files?.[0]));
 
-function showCallControls({call=true,answer=false,reject=false,mute=false,hangup=false}={}){
+function showCallControls({
+  call=true,answer=false,reject=false,mute=false,hangup=false
+}={}){
   $("callPanel").hidden=false;
   $("callButton").hidden=!call;
   $("answerButton").hidden=!answer;
@@ -248,90 +295,171 @@ function showCallControls({call=true,answer=false,reject=false,mute=false,hangup
   $("muteButton").hidden=!mute;
   $("hangupButton").hidden=!hangup;
 }
+
 async function getMicrophone(){
   if(!navigator.mediaDevices?.getUserMedia){
     throw new Error("Микрофон недоступен. Открой сайт через HTTPS.");
   }
   return navigator.mediaDevices.getUserMedia({audio:true,video:false});
 }
+
 function closePeer(){
-  if(stopCandidates){stopCandidates();stopCandidates=null}
-  if(stopRemoteCandidates){stopRemoteCandidates();stopRemoteCandidates=null}
-  if(peer){peer.ontrack=null;peer.onicecandidate=null;peer.close();peer=null}
-  if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null}
+  if(stopRemoteCandidates){
+    stopRemoteCandidates();
+    stopRemoteCandidates=null;
+  }
+  if(peer){
+    peer.ontrack=null;
+    peer.onicecandidate=null;
+    peer.onconnectionstatechange=null;
+    peer.close();
+    peer=null;
+  }
+  if(localStream){
+    localStream.getTracks().forEach(track=>track.stop());
+    localStream=null;
+  }
   $("remoteAudio").srcObject=null;
-  remoteDescriptionSet=false;queuedCandidates=[];isMuted=false;
+  remoteDescriptionSet=false;
+  queuedCandidates=[];
+  callDocumentReady=false;
+  pendingLocalCandidates=[];
+  isMuted=false;
   $("muteButton").textContent="🎙️ Выключить микрофон";
 }
+
 async function addRemoteCandidate(data){
   if(!peer||!data?.candidate)return;
   try{
     const candidate=new RTCIceCandidate(data.candidate);
-    if(remoteDescriptionSet)await peer.addIceCandidate(candidate);
-    else queuedCandidates.push(candidate);
-  }catch(e){console.warn("ICE candidate",e)}
-}
-async function flushCandidates(){
-  remoteDescriptionSet=true;
-  for(const candidate of queuedCandidates){
-    try{await peer.addIceCandidate(candidate)}catch(e){console.warn(e)}
+    if(remoteDescriptionSet){
+      await peer.addIceCandidate(candidate);
+    }else{
+      queuedCandidates.push(candidate);
+    }
+  }catch(e){
+    console.warn("ICE candidate",e);
   }
-  queuedCandidates=[];
 }
+
+async function flushRemoteCandidates(){
+  remoteDescriptionSet=true;
+  const pending=queuedCandidates.splice(0);
+  for(const candidate of pending){
+    try{
+      if(peer)await peer.addIceCandidate(candidate);
+    }catch(e){
+      console.warn("Не удалось добавить ICE-кандидат:",e);
+    }
+  }
+}
+
+async function flushLocalCandidates(callId){
+  callDocumentReady=true;
+  const pending=pendingLocalCandidates.splice(0);
+
+  for(const candidate of pending){
+    await addDoc(
+      collection(db,"calls",callId,"candidates"),
+      candidate
+    );
+  }
+}
+
 function watchRemoteCandidates(callId,remoteUid){
   if(stopRemoteCandidates)stopRemoteCandidates();
+
   stopRemoteCandidates=onSnapshot(
-    query(collection(db,"calls",callId,"candidates"),where("senderUid","==",remoteUid)),
-    snap=>snap.docChanges().forEach(change=>{
-      if(change.type==="added")void addRemoteCandidate(change.doc.data());
-    }),
+    query(
+      collection(db,"calls",callId,"candidates"),
+      where("senderUid","==",remoteUid)
+    ),
+    snap=>{
+      snap.docChanges().forEach(change=>{
+        if(change.type==="added"){
+          void addRemoteCandidate(change.doc.data());
+        }
+      });
+    },
     explainError
   );
 }
+
 function preparePeer(callId,remoteUid){
   peer=new RTCPeerConnection(rtcConfig);
+  callDocumentReady=false;
+  pendingLocalCandidates=[];
+
   peer.ontrack=event=>{
-    if(event.streams?.[0])$("remoteAudio").srcObject=event.streams[0];
-    $("remoteAudio").play().catch(()=>notice("Нажми на экран, чтобы включить звук."));
+    if(event.streams?.[0]){
+      $("remoteAudio").srcObject=event.streams[0];
+    }
+    $("remoteAudio").play().catch(()=>{
+      notice("Нажми на экран, чтобы включить звук.");
+    });
   };
+
   peer.onicecandidate=async event=>{
     if(!event.candidate)return;
+
+    const data={
+      senderUid:currentUser.uid,
+      candidate:event.candidate.toJSON(),
+      createdAt:serverTimestamp()
+    };
+
+    if(!callDocumentReady){
+      pendingLocalCandidates.push(data);
+      return;
+    }
+
     try{
-      await addDoc(collection(db,"calls",callId,"candidates"),{
-        senderUid:currentUser.uid,
-        candidate:event.candidate.toJSON(),
-        createdAt:serverTimestamp()
-      });
+      await addDoc(collection(db,"calls",callId,"candidates"),data);
     }catch(e){
       console.error("Ошибка отправки ICE-кандидата:",e);
-      notice("Firebase не разрешил отправить данные соединения. Проверь Rules для calls/candidates.");
+      explainError(e);
     }
   };
+
   peer.onconnectionstatechange=()=>{
     if(!peer)return;
-    if(peer.connectionState==="connected")setCallStatus("Разговор начался");
-    if(peer.connectionState==="disconnected")setCallStatus("Соединение потеряно. Ожидаем…");
-    if(peer.connectionState==="failed")setCallStatus("Не удалось соединить устройства. Может понадобиться TURN-сервер.");
+    if(peer.connectionState==="connected"){
+      setCallStatus("Разговор начался");
+    }else if(peer.connectionState==="disconnected"){
+      setCallStatus("Соединение потеряно. Ожидаем…");
+    }else if(peer.connectionState==="failed"){
+      setCallStatus("Не удалось соединить устройства. Может понадобиться TURN-сервер.");
+    }
   };
+
   watchRemoteCandidates(callId,remoteUid);
 }
 
 async function startCall(){
   if(!currentUser||!targetUid||!chatId||activeCallId||handlingCall)return;
-  handlingCall=true;$("callButton").disabled=true;notice("");
-  let saved=false;
+
+  handlingCall=true;
+  $("callButton").disabled=true;
+  notice("");
+  let savedCallId=null;
+  const session=++callSessionToken;
+
   try{
-    localStream=await getMicrophone();
     const chatSnap=await getDoc(doc(db,"chats",chatId));
     if(!chatSnap.exists())throw new Error("Чат не найден.");
+
     const members=chatSnap.data().members||[];
     if(!members.includes(currentUser.uid)||!members.includes(targetUid)){
       throw new Error("Участники не имеют доступа к этому чату.");
     }
 
+    localStream=await getMicrophone();
+
     const callRef=doc(collection(db,"calls"));
     activeCallId=callRef.id;
-    preparePeer(activeCallId,targetUid);
+    savedCallId=callRef.id;
+
+    preparePeer(callRef.id,targetUid);
     localStream.getTracks().forEach(track=>peer.addTrack(track,localStream));
 
     setCallStatus("Подготавливаем звонок…");
@@ -343,121 +471,215 @@ async function startCall(){
       calleeUid:targetUid,
       chatId,
       status:"ringing",
-      offer:{type:peer.localDescription.type,sdp:peer.localDescription.sdp},
+      offer:{
+        type:peer.localDescription.type,
+        sdp:peer.localDescription.sdp
+      },
       createdAt:serverTimestamp()
     });
-    saved=true;
+
+    await flushLocalCandidates(callRef.id);
+
     showCallControls({call:false,hangup:true});
     setCallStatus("Вызов… ожидаем ответа");
-    watchCallStatus(activeCallId);
+    watchCallStatus(callRef.id);
   }catch(e){
     explainError(e);
-    if(saved&&activeCallId){
-      try{await updateDoc(doc(db,"calls",activeCallId),{status:"ended",endedAt:serverTimestamp()})}
-      catch(cleanupError){console.warn(cleanupError)}
+
+    if(savedCallId){
+      try{
+        const callRef=doc(db,"calls",savedCallId);
+        const snap=await getDoc(callRef);
+        if(snap.exists()&&snap.data().status==="ringing"){
+          await updateDoc(callRef,{status:"ended"});
+        }
+      }catch(cleanupError){
+        console.warn("Не удалось завершить вызов после ошибки:",cleanupError);
+      }
     }
+
     await cleanupCall(false);
   }finally{
-    handlingCall=false;$("callButton").disabled=false;
+    if(session===callSessionToken){
+      handlingCall=false;
+      $("callButton").disabled=false;
+    }
   }
 }
 
 function watchCallStatus(callId){
   if(stopActiveCall)stopActiveCall();
-  stopActiveCall=onSnapshot(doc(db,"calls",callId),async snap=>{
-    if(!snap.exists()){await cleanupCall(false);return}
-    const data=snap.data();
-    if(data.status==="accepted"&&data.answer&&peer&&!peer.currentRemoteDescription){
-      try{
-        await peer.setRemoteDescription(new RTCSessionDescription(data.answer));
-        await flushCandidates();
-        setCallStatus("Соединяем…");
-      }catch(e){explainError(e)}
-    }else if(data.status==="rejected"){
-      setCallStatus("Вызов отклонён");await cleanupCall(false);
-    }else if(data.status==="ended"){
-      setCallStatus("Собеседник завершил звонок");await cleanupCall(false);
-    }
-  },explainError);
+
+  stopActiveCall=onSnapshot(
+    doc(db,"calls",callId),
+    async snap=>{
+      if(!snap.exists()){
+        if(activeCallId===callId)await cleanupCall(false);
+        return;
+      }
+
+      const data=snap.data();
+      if(activeCallId!==callId)return;
+
+      if(data.status==="accepted"&&data.answer&&peer&&!peer.currentRemoteDescription){
+        try{
+          await peer.setRemoteDescription(new RTCSessionDescription(data.answer));
+          await flushRemoteCandidates();
+          setCallStatus("Соединяем…");
+        }catch(e){
+          explainError(e);
+        }
+      }else if(data.status==="rejected"){
+        setCallStatus("Вызов отклонён");
+        await cleanupCall(false);
+      }else if(data.status==="ended"){
+        setCallStatus("Звонок завершён");
+        await cleanupCall(false);
+      }
+    },
+    explainError
+  );
 }
 
 async function answerCall(){
   if(!activeCallId||handlingCall)return;
-  handlingCall=true;$("answerButton").disabled=true;
+
+  handlingCall=true;
+  $("answerButton").disabled=true;
+  const callId=activeCallId;
+  const session=++callSessionToken;
+
   try{
-    const callRef=doc(db,"calls",activeCallId);
+    const callRef=doc(db,"calls",callId);
     const snap=await getDoc(callRef);
     if(!snap.exists())throw new Error("Вызов уже завершён.");
+
     const data=snap.data();
     if(data.calleeUid!==currentUser.uid||data.status!=="ringing"){
       throw new Error("Этот вызов больше нельзя принять.");
     }
+
     localStream=await getMicrophone();
-    preparePeer(activeCallId,data.callerUid);
+    preparePeer(callId,data.callerUid);
     localStream.getTracks().forEach(track=>peer.addTrack(track,localStream));
+
     await peer.setRemoteDescription(new RTCSessionDescription(data.offer));
-    await flushCandidates();
+    await flushRemoteCandidates();
+
     const answer=await peer.createAnswer();
     await peer.setLocalDescription(answer);
+
     await updateDoc(callRef,{
-      answer:{type:answer.type,sdp:answer.sdp},
-      status:"accepted",acceptedAt:serverTimestamp()
+      answer:{
+        type:peer.localDescription.type,
+        sdp:peer.localDescription.sdp
+      },
+      status:"accepted",
+      acceptedAt:serverTimestamp()
     });
+
+    await flushLocalCandidates(callId);
+
     showCallControls({call:false,mute:true,hangup:true});
     setCallStatus("Соединяем…");
-    watchCallStatus(activeCallId);
-  }catch(e){explainError(e);await cleanupCall(false)}
-  finally{handlingCall=false;$("answerButton").disabled=false}
+    watchCallStatus(callId);
+  }catch(e){
+    explainError(e);
+    await cleanupCall(false);
+  }finally{
+    if(session===callSessionToken){
+      handlingCall=false;
+      $("answerButton").disabled=false;
+    }
+  }
 }
 
 async function endCall(rejected=false){
-  const id=activeCallId;
+  const callId=activeCallId;
+  if(!callId){
+    await cleanupCall(true);
+    return;
+  }
+
+  const session=++callSessionToken;
   try{
-    if(id){
-      const callRef=doc(db,"calls",id);
-      const snap=await getDoc(callRef);
-      if(snap.exists()){
-        const data=snap.data();
-        if(data.callerUid===currentUser?.uid||data.calleeUid===currentUser?.uid){
-          await updateDoc(callRef,{
-            status:rejected?"rejected":"ended",
-            ...(rejected?{}:{endedAt:serverTimestamp()})
-          });
+    const callRef=doc(db,"calls",callId);
+    const snap=await getDoc(callRef);
+
+    if(snap.exists()){
+      const data=snap.data();
+      const isCaller=data.callerUid===currentUser?.uid;
+      const isCallee=data.calleeUid===currentUser?.uid;
+
+      if(!isCaller&&!isCallee){
+        throw new Error("Ты не являешься участником этого звонка.");
+      }
+
+      if(rejected){
+        if(isCallee&&data.status==="ringing"){
+          await updateDoc(callRef,{status:"rejected"});
         }
+      }else if(["ringing","accepted"].includes(data.status)){
+        await updateDoc(callRef,{status:"ended"});
       }
     }
-  }catch(e){explainError(e)}
-  await cleanupCall(true);
+  }catch(e){
+    explainError(e);
+  }finally{
+    if(session===callSessionToken)await cleanupCall(true);
+  }
 }
+
 async function cleanupCall(reset=true){
-  if(stopActiveCall){stopActiveCall();stopActiveCall=null}
-  closePeer();activeCallId=null;handlingCall=false;
+  callSessionToken++;
+  if(stopActiveCall){
+    stopActiveCall();
+    stopActiveCall=null;
+  }
+  closePeer();
+  activeCallId=null;
+  handlingCall=false;
   showCallControls({call:true});
+  $("answerButton").disabled=false;
+  $("callButton").disabled=false;
   if(reset)setCallStatus("Звонок завершён");
 }
+
 $("callButton").addEventListener("click",startCall);
 $("answerButton").addEventListener("click",answerCall);
 $("rejectButton").addEventListener("click",()=>endCall(true));
 $("hangupButton").addEventListener("click",()=>endCall(false));
+
 $("muteButton").addEventListener("click",()=>{
   if(!localStream)return;
   isMuted=!isMuted;
-  localStream.getAudioTracks().forEach(t=>t.enabled=!isMuted);
-  $("muteButton").textContent=isMuted?"🔇 Включить микрофон":"🎙️ Выключить микрофон";
+  localStream.getAudioTracks().forEach(track=>track.enabled=!isMuted);
+  $("muteButton").textContent=isMuted
+    ?"🔇 Включить микрофон"
+    :"🎙️ Выключить микрофон";
 });
 
 function listenIncomingCalls(){
   if(stopIncomingCalls)stopIncomingCalls();
+
   stopIncomingCalls=onSnapshot(
-    query(collection(db,"calls"),
+    query(
+      collection(db,"calls"),
       where("calleeUid","==",currentUser.uid),
-      where("status","==","ringing"),limit(10)),
+      where("status","==","ringing"),
+      limit(10)
+    ),
     snap=>{
       snap.docChanges().forEach(change=>{
         if(change.type!=="added")return;
+
         const call=change.doc.data();
-        if(call.callerUid===currentUser.uid||call.chatId!==chatId)return;
+        if(call.callerUid===currentUser.uid)return;
+
+        // На этой странице показываем вызов только от текущего собеседника.
+        if(call.chatId!==chatId)return;
         if(activeCallId)return;
+
         activeCallId=change.doc.id;
         showCallControls({call:false,answer:true,reject:true});
         setCallStatus("Входящий вызов от "+(targetUser?.username||"собеседника"));
@@ -472,14 +694,23 @@ onAuthStateChanged(auth,async user=>{
   if(stopMessages){stopMessages();stopMessages=null}
   if(stopIncomingCalls){stopIncomingCalls();stopIncomingCalls=null}
   if(stopActiveCall){stopActiveCall();stopActiveCall=null}
-  closePeer();currentUser=user;activeCallId=null;
+
+  closePeer();
+  currentUser=user;
+  targetUser=null;
+  chatId=null;
+  activeCallId=null;
+  handlingCall=false;
   showCallControls({call:true});
 
   if(!user){
     $("status").textContent="Не выполнен вход";
+    $("username").textContent="Chatly";
+    showEmpty("Войди в Chatly через страницу входа.");
     notice("Войди в Chatly через страницу входа.");
     return;
   }
+
   if(!targetUid||targetUid===user.uid){
     $("status").textContent="Чат не найден";
     notice("Некорректный UID собеседника в адресе страницы.");
@@ -492,12 +723,16 @@ onAuthStateChanged(auth,async user=>{
       getDoc(doc(db,"users",user.uid)),
       getDoc(doc(db,"users",targetUid))
     ]);
+
     if(!own.exists())throw new Error("Твой профиль не найден в users.");
     if(!target.exists())throw new Error("Профиль собеседника не найден.");
+
     targetUser=target.data();
     $("username").textContent="@"+(targetUser.username||"собеседник");
+
     await openOrCreateChat();
     listenIncomingCalls();
+    notice("");
   }catch(e){
     $("status").textContent="Ошибка загрузки";
     explainError(e);
