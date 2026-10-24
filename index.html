@@ -2,109 +2,67 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
- <link rel="manifest" href="./manifest.webmanifest">
- <meta charset="UTF-8">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101522">
   <title>Chatly — чаты и сообщения</title>
 
   <style>
     * { box-sizing: border-box; }
-
     body {
-      margin: 0;
-      min-height: 100vh;
-      background: #101522;
-      color: #f5f7ff;
-      font-family: Arial, sans-serif;
+      margin: 0; min-height: 100vh; background: #101522;
+      color: #f5f7ff; font-family: Arial, sans-serif;
     }
-
     header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 18px 5%;
-      background: #171f30;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; padding: 18px 5%; background: #171f30;
       border-bottom: 1px solid #303b55;
     }
-
-    .logo {
-      color: #9aa9ff;
-      font-size: 27px;
-      font-weight: bold;
-    }
-
-    main {
-      width: min(650px, 94%);
-      margin: 25px auto;
-    }
-
+    .logo { color: #9aa9ff; font-size: 27px; font-weight: bold; }
+    main { width: min(650px, 94%); margin: 25px auto; }
     .panel {
-      background: #1a2233;
-      border: 1px solid #303b55;
-      border-radius: 17px;
-      padding: 20px;
-      margin-bottom: 18px;
+      background: #1a2233; border: 1px solid #303b55;
+      border-radius: 17px; padding: 20px; margin-bottom: 18px;
     }
-
     h1 { font-size: 25px; margin: 0 0 10px; }
     h2 { font-size: 20px; margin: 0 0 10px; }
     p { color: #b7c1d8; line-height: 1.5; }
-
     input, button {
-      width: 100%;
-      padding: 13px;
-      margin-top: 10px;
-      border-radius: 10px;
-      font-size: 16px;
+      width: 100%; padding: 13px; margin-top: 10px;
+      border-radius: 10px; font-size: 16px;
     }
-
     input {
-      background: #111827;
-      color: white;
-      border: 1px solid #3a4762;
+      background: #111827; color: white; border: 1px solid #3a4762;
       outline: none;
     }
-
     input:focus { border-color: #8b9cff; }
-
     button {
-      background: #7588ff;
-      color: white;
-      border: 0;
-      font-weight: bold;
-      cursor: pointer;
+      background: #7588ff; color: white; border: 0;
+      font-weight: bold; cursor: pointer;
     }
-
     button:hover { filter: brightness(1.08); }
     button:disabled { opacity: .6; cursor: wait; }
     .secondary { background: #303b55; }
+    .danger { background: #a63d55; }
     .hidden { display: none !important; }
-
     .muted {
-      color: #aab5cd;
-      font-size: 13px;
-      overflow-wrap: anywhere;
+      color: #aab5cd; font-size: 13px; overflow-wrap: anywhere;
     }
-
     .entry {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 13px 0;
-      border-bottom: 1px solid #303b55;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 13px 0; border-bottom: 1px solid #303b55;
     }
-
     .entry:last-child { border-bottom: 0; }
     .entryInfo { min-width: 0; overflow-wrap: anywhere; }
     .entry button { width: auto; min-width: 95px; margin: 0; }
-
-    #authStatus, #searchStatus, #recentUsersStatus {
-      overflow-wrap: anywhere;
+    .verified {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; margin-left: 5px;
+      border-radius: 50%; background: #2589ff; color: white;
+      font-size: 13px; font-weight: bold; vertical-align: middle;
     }
-
+    .status { overflow-wrap: anywhere; }
     @media (max-width: 420px) {
       .panel { padding: 15px; }
       .entry { align-items: flex-start; }
@@ -114,514 +72,643 @@
 </head>
 
 <body>
-  <header>
-    <div class="logo">Chatly 💬</div>
-    <button id="logoutBtn" class="secondary hidden"
-      style="width:auto;margin:0">Выйти</button>
-  </header>
+<header>
+  <div class="logo">Chatly 💬</div>
+  <button id="logoutBtn" class="secondary hidden"
+    style="width:auto;margin:0">Выйти</button>
+</header>
 
-  <main>
-    <section id="authPanel" class="panel">
-      <h1>Добро пожаловать в Chatly!</h1>
-      <p>Войди в аккаунт или создай новый, чтобы общаться.</p>
+<main>
+  <section id="authPanel" class="panel">
+    <h1>Добро пожаловать в Chatly!</h1>
+    <p>Войди в аккаунт или создай новый, чтобы общаться.</p>
 
-      <div id="registerFields">
-        <input id="username"
-          placeholder="Имя пользователя"
-          maxlength="20"
-          autocomplete="username">
-        <p class="muted">
-          3–20 символов: латинские буквы, цифры или _.
-        </p>
-      </div>
+    <div id="registerFields">
+      <input id="username" placeholder="Имя пользователя"
+        maxlength="20" autocomplete="username">
+      <p class="muted">3–20 символов: латинские буквы, цифры или _.</p>
+    </div>
 
-      <input id="email" type="email"
-        placeholder="Email" autocomplete="email">
+    <input id="email" type="email" placeholder="Email" autocomplete="email">
+    <input id="password" type="password" placeholder="Пароль"
+      autocomplete="current-password">
 
-      <input id="password" type="password"
-        placeholder="Пароль" autocomplete="current-password">
+    <button id="loginBtn">Войти</button>
+    <button id="registerBtn" class="secondary">Создать аккаунт</button>
+    <p id="authStatus" class="status" role="status"></p>
+  </section>
 
-      <button id="loginBtn">Войти</button>
-      <button id="registerBtn" class="secondary">
-        Создать аккаунт
-      </button>
-
-      <p id="authStatus" role="status" aria-live="polite"></p>
+  <div id="appPanel" class="hidden">
+    <section class="panel">
+      <h1>Привет, <span id="myUsername"></span>! 👋</h1>
+      <p>Ищи пользователей и начинай переписку без заявок в друзья.</p>
     </section>
 
-    <div id="appPanel" class="hidden">
-      <section class="panel">
-        <h1>Привет, <span id="myUsername"></span>! 👋</h1>
-        <p>Ищи пользователей и начинай переписку без заявок в друзья.</p>
-      </section>
+    <section class="panel">
+      <h2>🔵 Верификация профиля</h2>
+      <p>Подай заявку на синюю галочку. Решение принимает администратор Chatly.</p>
+      <button id="verificationBtn">Подать заявку</button>
+      <p id="verificationStatus" class="status" role="status"></p>
+    </section>
 
-      <section class="panel">
-        <h2>🔎 Найти пользователя</h2>
+    <section id="adminPanel" class="panel hidden">
+      <h2>🛡️ Панель администратора</h2>
+      <p>Заявки на синюю галочку.</p>
+      <button id="refreshRequestsBtn" class="secondary">
+        Обновить заявки
+      </button>
+      <div id="verificationRequests"></div>
+      <p id="adminStatus" class="status" role="status"></p>
+    </section>
 
-        <input id="searchUsername"
-          placeholder="Имя пользователя"
-          maxlength="20"
-          autocomplete="off">
+    <section class="panel">
+      <h2>🔎 Найти пользователя</h2>
+      <input id="searchUsername" placeholder="Имя пользователя"
+        maxlength="20" autocomplete="off">
+      <button id="searchBtn">Найти</button>
+      <p id="searchStatus" class="status" role="status"></p>
+      <div id="searchResult"></div>
+    </section>
 
-        <button id="searchBtn">Найти</button>
+    <section class="panel">
+      <h2>🕘 Недавно введённые ники</h2>
+      <p>Здесь только пользователи, которых ты искал.</p>
+      <div id="recentUsersList"></div>
+      <p id="recentUsersStatus" class="status" role="status">
+        Пока никого нет.
+      </p>
+      <button id="clearRecentBtn" class="secondary">
+        Очистить историю
+      </button>
+    </section>
+  </div>
+</main>
 
-        <p id="searchStatus" role="status" aria-live="polite"></p>
-        <div id="searchResult"></div>
-      </section>
+<script type="module">
+  import { initializeApp } from
+    "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 
-      <section class="panel">
-        <h2>🕘 Недавно введённые ники</h2>
-        <p>Здесь только пользователи, которых ты искал.</p>
+  import {
+    getAuth, createUserWithEmailAndPassword,
+    signInWithEmailAndPassword, onAuthStateChanged,
+    signOut, updateProfile
+  } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
-        <div id="recentUsersList"></div>
+  import {
+    getFirestore, doc, getDoc, getDocs, collection,
+    runTransaction, serverTimestamp, setDoc, updateDoc,
+    writeBatch
+  } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
-        <p id="recentUsersStatus" role="status" aria-live="polite">
-          Пока никого нет.
-        </p>
+  const firebaseConfig = {
+    apiKey: "AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
+    authDomain: "chatly-19613.firebaseapp.com",
+    projectId: "chatly-19613",
+    storageBucket: "chatly-19613.firebasestorage.app",
+    messagingSenderId: "1080401916394",
+    appId: "1:1080401916394:web:815e66c78ced380b4c8293",
+    measurementId: "G-WJ2NPP9T45"
+  };
 
-        <button id="clearRecentBtn" class="secondary">
-          Очистить историю
-        </button>
-      </section>
-    </div>
-  </main>
+  const ADMIN_UID = "71glZGFXSrYum2HdrgG7wOENrC72";
 
-  <script type="module">
-    import {
-      initializeApp
-    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const $ = id => document.getElementById(id);
 
-    import {
-      getAuth,
-      createUserWithEmailAndPassword,
-      signInWithEmailAndPassword,
-      onAuthStateChanged,
-      signOut,
-      updateProfile
-    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+  let authViewVersion = 0;
+  let searchVersion = 0;
 
-    import {
-      getFirestore,
-      doc,
-      getDoc,
-      runTransaction,
-      serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
-      authDomain: "chatly-19613.firebaseapp.com",
-      projectId: "chatly-19613",
-      storageBucket: "chatly-19613.firebasestorage.app",
-      messagingSenderId: "1080401916394",
-      appId: "1:1080401916394:web:815e66c78ced380b4c8293",
-      measurementId: "G-WJ2NPP9T45"
+  function showError(error) {
+    console.error("Chatly error:", error);
+    const messages = {
+      "auth/email-already-in-use": "Этот email уже используется.",
+      "auth/invalid-email": "Проверь правильность email.",
+      "auth/weak-password": "Пароль должен содержать минимум 6 символов.",
+      "auth/invalid-credential": "Неверный email или пароль.",
+      "auth/too-many-requests": "Слишком много попыток. Попробуй позже.",
+      "auth/network-request-failed": "Проверь подключение к интернету.",
+      "permission-denied":
+        "Firebase отказал в доступе. Проверь Firestore Rules.",
+      "unavailable": "Firebase недоступен. Проверь интернет."
     };
+    return messages[error?.code] || error?.message ||
+      "Произошла неизвестная ошибка.";
+  }
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+  function normalizeUsername(value) {
+    return value.trim().toLowerCase();
+  }
 
-    const $ = id => document.getElementById(id);
+  function addVerifiedMark(parent, verified) {
+    if (!verified) return;
+    const mark = document.createElement("span");
+    mark.className = "verified";
+    mark.textContent = "✓";
+    mark.title = "Подтверждённый профиль Chatly";
+    mark.setAttribute("aria-label", "Подтверждённый профиль");
+    parent.append(mark);
+  }
 
-    let authViewVersion = 0;
-    let searchVersion = 0;
+  function openChat(uid) {
+    if (!uid || !auth.currentUser) return;
+    location.href = "chat.html?uid=" + encodeURIComponent(uid);
+  }
 
-    function showError(error) {
-      console.error("Chatly error:", error);
+  function addUserRow(container, username, uid, subtitle, verified = false) {
+    const row = document.createElement("div");
+    row.className = "entry";
 
-      const messages = {
-        "auth/email-already-in-use":
-          "Этот email уже используется.",
-        "auth/invalid-email":
-          "Проверь правильность email.",
-        "auth/weak-password":
-          "Пароль должен содержать минимум 6 символов.",
-        "auth/invalid-credential":
-          "Неверный email или пароль.",
-        "auth/too-many-requests":
-          "Слишком много попыток. Попробуй позже.",
-        "auth/network-request-failed":
-          "Проверь подключение к интернету.",
-        "permission-denied":
-          "Firebase отказал в доступе. Проверь Firestore Rules.",
-        "unavailable":
-          "Firebase недоступен. Проверь интернет."
-      };
+    const info = document.createElement("div");
+    info.className = "entryInfo";
 
-      return messages[error?.code] ||
-        error?.message ||
-        "Произошла неизвестная ошибка.";
+    const name = document.createElement("strong");
+    name.textContent = "@" + username;
+    addVerifiedMark(name, verified);
+
+    const detail = document.createElement("div");
+    detail.className = "muted";
+    detail.textContent = subtitle;
+
+    const button = document.createElement("button");
+    button.textContent = "Написать";
+    button.addEventListener("click", () => openChat(uid));
+
+    info.append(name, detail);
+    row.append(info, button);
+    container.append(row);
+  }
+
+  function recentStorageKey() {
+    return auth.currentUser
+      ? "chatly_recent_usernames_" + auth.currentUser.uid
+      : null;
+  }
+
+  function getRecentUsers() {
+    const key = recentStorageKey();
+    if (!key) return [];
+    try {
+      const value = JSON.parse(localStorage.getItem(key) || "[]");
+      return Array.isArray(value) ? value : [];
+    } catch (error) {
+      console.error("Ошибка чтения истории:", error);
+      return [];
+    }
+  }
+
+  function saveRecentUser(username, uid) {
+    const key = recentStorageKey();
+    if (!key || !uid || !username) return;
+    try {
+      const recent = getRecentUsers().filter(item => item && item.uid !== uid);
+      recent.unshift({ username, uid });
+      localStorage.setItem(key, JSON.stringify(recent.slice(0, 20)));
+      renderRecentUsers();
+    } catch (error) {
+      console.error("Не удалось сохранить историю:", error);
+      $("recentUsersStatus").textContent =
+        "Не удалось сохранить историю в браузере.";
+    }
+  }
+
+  function renderRecentUsers() {
+    const list = $("recentUsersList");
+    const status = $("recentUsersStatus");
+    list.replaceChildren();
+
+    const recent = getRecentUsers();
+    if (!recent.length) {
+      status.textContent = "Пока никого нет. Найди пользователя выше.";
+      return;
     }
 
-    function normalizeUsername(value) {
-      return value.trim().toLowerCase();
+    status.textContent = "Последние найденные пользователи";
+
+    for (const item of recent) {
+      if (!item?.uid || !item?.username) continue;
+      addUserRow(list, item.username, item.uid, "Недавно искал");
+    }
+  }
+
+  $("clearRecentBtn").addEventListener("click", () => {
+    const key = recentStorageKey();
+    if (key) localStorage.removeItem(key);
+    renderRecentUsers();
+  });
+
+  $("loginBtn").addEventListener("click", async () => {
+    const email = $("email").value.trim();
+    const password = $("password").value;
+
+    if (!email || !password) {
+      $("authStatus").textContent = "Введи email и пароль.";
+      return;
     }
 
-    function openChat(uid) {
-      if (!uid || !auth.currentUser) return;
+    $("loginBtn").disabled = true;
+    $("authStatus").textContent = "Входим…";
 
-      location.href = "chat.html?uid=" + encodeURIComponent(uid);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      $("authStatus").textContent = "";
+    } catch (error) {
+      $("authStatus").textContent = showError(error);
+    } finally {
+      $("loginBtn").disabled = false;
+    }
+  });
+
+  $("registerBtn").addEventListener("click", async () => {
+    const username = normalizeUsername($("username").value);
+    const email = $("email").value.trim();
+    const password = $("password").value;
+
+    if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+      $("authStatus").textContent =
+        "Имя: 3–20 символов, латинские буквы, цифры или _.";
+      return;
+    }
+    if (!email || !password) {
+      $("authStatus").textContent = "Введи email и пароль.";
+      return;
+    }
+    if (password.length < 6) {
+      $("authStatus").textContent =
+        "Пароль должен содержать минимум 6 символов.";
+      return;
     }
 
-    function addUserRow(container, username, uid, subtitle) {
-      const row = document.createElement("div");
-      row.className = "entry";
+    $("registerBtn").disabled = true;
+    let createdUser = null;
 
-      const info = document.createElement("div");
-      info.className = "entryInfo";
+    try {
+      $("authStatus").textContent = "Создаём аккаунт…";
+      const credential = await createUserWithEmailAndPassword(
+        auth, email, password
+      );
+      createdUser = credential.user;
 
-      const name = document.createElement("strong");
-      name.textContent = "@" + username;
+      const usernameRef = doc(db, "usernames", username);
+      const userRef = doc(db, "users", createdUser.uid);
 
-      const detail = document.createElement("div");
-      detail.className = "muted";
-      detail.textContent = subtitle;
+      await runTransaction(db, async transaction => {
+        const existingName = await transaction.get(usernameRef);
+        if (existingName.exists()) throw new Error("USERNAME_TAKEN");
 
-      const button = document.createElement("button");
-      button.textContent = "Написать";
-      button.addEventListener("click", () => openChat(uid));
+        transaction.set(usernameRef, { uid: createdUser.uid });
+        transaction.set(userRef, {
+          username,
+          createdAt: serverTimestamp(),
+          verified: false
+        });
+      });
 
-      info.append(name, detail);
-      row.append(info, button);
-      container.append(row);
-    }
-
-    // История хранится отдельно для каждого аккаунта на устройстве.
-    function recentStorageKey() {
-      return auth.currentUser
-        ? "chatly_recent_usernames_" + auth.currentUser.uid
-        : null;
-    }
-
-    function getRecentUsers() {
-      const key = recentStorageKey();
-      if (!key) return [];
-
-      try {
-        const value = JSON.parse(localStorage.getItem(key) || "[]");
-        return Array.isArray(value) ? value : [];
-      } catch (error) {
-        console.error("Ошибка чтения истории:", error);
-        return [];
+      await updateProfile(createdUser, { displayName: username });
+      $("authStatus").textContent = "Аккаунт создан!";
+    } catch (error) {
+      if (error.message === "USERNAME_TAKEN") {
+        $("authStatus").textContent = "Это имя уже занято. Выбери другое.";
+      } else {
+        $("authStatus").textContent = "Ошибка регистрации: " + showError(error);
+        if (createdUser) {
+          $("authStatus").textContent +=
+            " Аккаунт мог создаться без профиля. Попробуй войти в него.";
+        }
       }
+    } finally {
+      $("registerBtn").disabled = false;
     }
+  });
 
-    function saveRecentUser(username, uid) {
-      const key = recentStorageKey();
-      if (!key || !uid || !username) return;
-
-      try {
-        const recent = getRecentUsers()
-          .filter(item => item && item.uid !== uid);
-
-        recent.unshift({ username, uid });
-
-        localStorage.setItem(
-          key,
-          JSON.stringify(recent.slice(0, 20))
-        );
-
-        renderRecentUsers();
-      } catch (error) {
-        console.error("Не удалось сохранить историю:", error);
-        $("recentUsersStatus").textContent =
-          "Не удалось сохранить историю в браузере.";
-      }
+  $("logoutBtn").addEventListener("click", async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      alert(showError(error));
     }
+  });
 
-    function renderRecentUsers() {
-      const list = $("recentUsersList");
-      const status = $("recentUsersStatus");
+  // Заявка на верификацию: один документ на аккаунт.
+  $("verificationBtn").addEventListener("click", async () => {
+    const user = auth.currentUser;
+    if (!user) return;
 
-      list.replaceChildren();
+    const button = $("verificationBtn");
+    button.disabled = true;
+    $("verificationStatus").textContent = "Отправляем заявку…";
 
-      const recent = getRecentUsers();
+    try {
+      const profileRef = doc(db, "users", user.uid);
+      const requestRef = doc(db, "verificationRequests", user.uid);
+      const profileSnap = await getDoc(profileRef);
 
-      if (!recent.length) {
-        status.textContent = "Пока никого нет. Найди пользователя выше.";
+      if (!profileSnap.exists()) {
+        $("verificationStatus").textContent =
+          "Профиль не найден. Выйди и войди снова.";
         return;
       }
 
-      status.textContent = "Последние найденные пользователи";
-
-      for (const item of recent) {
-        if (!item || !item.uid || !item.username) continue;
-
-        addUserRow(
-          list,
-          item.username,
-          item.uid,
-          "Недавно искал"
-        );
+      if (profileSnap.data().verified === true) {
+        $("verificationStatus").textContent =
+          "У тебя уже есть синяя галочка ✓";
+        return;
       }
+
+      const requestSnap = await getDoc(requestRef);
+      if (requestSnap.exists()) {
+        const status = requestSnap.data().status;
+        const labels = {
+          pending: "Твоя заявка уже ожидает рассмотрения.",
+          approved: "Заявка одобрена! Твой профиль подтверждён.",
+          rejected: "Заявка отклонена. Обратись к администратору Chatly."
+        };
+        $("verificationStatus").textContent =
+          labels[status] || "Заявка уже существует.";
+        return;
+      }
+
+      await setDoc(requestRef, {
+        uid: user.uid,
+        username: profileSnap.data().username || user.displayName || "",
+        status: "pending",
+        createdAt: serverTimestamp()
+      });
+
+      $("verificationStatus").textContent =
+        "Заявка отправлена. Дождись решения администратора.";
+    } catch (error) {
+      $("verificationStatus").textContent = showError(error);
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  // Панель администратора. Firestore Rules также должны проверять ADMIN_UID.
+  async function loadVerificationRequests() {
+    if (auth.currentUser?.uid !== ADMIN_UID) return;
+
+    const list = $("verificationRequests");
+    list.replaceChildren();
+    $("adminStatus").textContent = "Загружаем заявки…";
+
+    try {
+      const snapshot = await getDocs(collection(db, "verificationRequests"));
+      let count = 0;
+
+      snapshot.forEach(requestSnap => {
+        const request = requestSnap.data();
+        if (request.status !== "pending") return;
+        count++;
+
+        const row = document.createElement("div");
+        row.className = "entry";
+
+        const info = document.createElement("div");
+        info.className = "entryInfo";
+
+        const name = document.createElement("strong");
+        name.textContent = "@" + (request.username || "без ника");
+
+        const detail = document.createElement("div");
+        detail.className = "muted";
+        detail.textContent = "UID: " + request.uid;
+
+        info.append(name, detail);
+
+        const actions = document.createElement("div");
+        actions.style.display = "flex";
+        actions.style.flexDirection = "column";
+        actions.style.gap = "6px";
+
+        const approve = document.createElement("button");
+        approve.textContent = "Одобрить";
+        approve.addEventListener("click", () =>
+          reviewRequest(requestSnap.id, true)
+        );
+
+        const reject = document.createElement("button");
+        reject.textContent = "Отклонить";
+        reject.className = "danger";
+        reject.addEventListener("click", () =>
+          reviewRequest(requestSnap.id, false)
+        );
+
+        actions.append(approve, reject);
+        row.append(info, actions);
+        list.append(row);
+      });
+
+      $("adminStatus").textContent = count
+        ? "Заявок на рассмотрении: " + count
+        : "Новых заявок нет.";
+    } catch (error) {
+      $("adminStatus").textContent =
+        "Не удалось загрузить заявки: " + showError(error);
+    }
+  }
+
+  async function reviewRequest(uid, approve) {
+    if (auth.currentUser?.uid !== ADMIN_UID) {
+      $("adminStatus").textContent = "Нет прав администратора.";
+      return;
     }
 
-    $("clearRecentBtn").addEventListener("click", () => {
-      const key = recentStorageKey();
+    try {
+      const requestRef = doc(db, "verificationRequests", uid);
+      const profileRef = doc(db, "users", uid);
+      const requestSnap = await getDoc(requestRef);
 
-      if (key) {
-        localStorage.removeItem(key);
+      if (!requestSnap.exists() || requestSnap.data().status !== "pending") {
+        $("adminStatus").textContent =
+          "Заявка уже обработана или не найдена.";
+        await loadVerificationRequests();
+        return;
+      }
+
+      const batch = writeBatch(db);
+      batch.update(requestRef, {
+        status: approve ? "approved" : "rejected",
+        reviewedAt: serverTimestamp(),
+        reviewedBy: ADMIN_UID
+      });
+
+      if (approve) {
+        batch.update(profileRef, { verified: true });
+      }
+
+      await batch.commit();
+      $("adminStatus").textContent = approve
+        ? "Заявка одобрена."
+        : "Заявка отклонена.";
+
+      await loadVerificationRequests();
+    } catch (error) {
+      $("adminStatus").textContent =
+        "Не удалось обработать заявку: " + showError(error);
+    }
+  }
+
+  $("refreshRequestsBtn").addEventListener("click", loadVerificationRequests);
+
+  async function searchUser() {
+    const version = ++searchVersion;
+    const username = normalizeUsername($("searchUsername").value);
+
+    $("searchResult").replaceChildren();
+    $("searchStatus").textContent = "";
+
+    if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+      $("searchStatus").textContent =
+        "Введи имя из 3–20 латинских букв, цифр или _.";
+      return;
+    }
+
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      $("searchStatus").textContent = "Сначала войди в аккаунт.";
+      return;
+    }
+
+    $("searchBtn").disabled = true;
+    $("searchStatus").textContent = "Ищем пользователя…";
+
+    try {
+      const usernameSnapshot = await getDoc(doc(db, "usernames", username));
+      if (version !== searchVersion) return;
+
+      if (!usernameSnapshot.exists()) {
+        $("searchStatus").textContent = "Пользователь не найден.";
+        return;
+      }
+
+      const uid = usernameSnapshot.data().uid;
+      if (!uid) {
+        $("searchStatus").textContent = "У этого ника отсутствует профиль.";
+        return;
+      }
+      if (uid === currentUser.uid) {
+        $("searchStatus").textContent = "Это твой собственный аккаунт.";
+        return;
+      }
+
+      const profileSnapshot = await getDoc(doc(db, "users", uid));
+      if (version !== searchVersion) return;
+
+      if (!profileSnapshot.exists()) {
+        $("searchStatus").textContent =
+          "Профиль не найден. Возможно, регистрация не завершилась.";
+        return;
+      }
+
+      const profile = profileSnapshot.data();
+      const foundUsername = profile.username || username;
+
+      addUserRow(
+        $("searchResult"), foundUsername, uid,
+        "Личная переписка без заявок в друзья",
+        profile.verified === true
+      );
+
+      saveRecentUser(foundUsername, uid);
+      $("searchStatus").textContent = "";
+    } catch (error) {
+      if (version === searchVersion) {
+        $("searchStatus").textContent = showError(error);
+      }
+    } finally {
+      if (version === searchVersion) $("searchBtn").disabled = false;
+    }
+  }
+
+  $("searchBtn").addEventListener("click", searchUser);
+  $("searchUsername").addEventListener("keydown", event => {
+    if (event.key === "Enter") searchUser();
+  });
+
+  onAuthStateChanged(auth, async user => {
+    const version = ++authViewVersion;
+    searchVersion++;
+
+    $("authPanel").classList.toggle("hidden", !!user);
+    $("appPanel").classList.toggle("hidden", !user);
+    $("logoutBtn").classList.toggle("hidden", !user);
+
+    $("searchResult").replaceChildren();
+    $("searchStatus").textContent = "";
+    $("recentUsersList").replaceChildren();
+
+    $("adminPanel").classList.toggle(
+      "hidden", !user || user.uid !== ADMIN_UID
+    );
+
+    if (!user) {
+      $("myUsername").textContent = "";
+      $("recentUsersStatus").textContent =
+        "Войди, чтобы увидеть историю поиска.";
+      $("verificationStatus").textContent = "";
+      return;
+    }
+
+    $("myUsername").textContent = user.displayName || "пользователь";
+    $("recentUsersStatus").textContent = "Загружаем историю…";
+    $("verificationStatus").textContent = "Проверяем статус…";
+
+    try {
+      const profileSnapshot = await getDoc(doc(db, "users", user.uid));
+      if (version !== authViewVersion) return;
+
+      if (profileSnapshot.exists()) {
+        const profile = profileSnapshot.data();
+        $("myUsername").textContent =
+          profile.username || user.displayName || "пользователь";
+
+        if (profile.verified === true) {
+          $("myUsername").textContent += " ✓";
+          $("verificationStatus").textContent =
+            "Твой профиль подтверждён синей галочкой!";
+          $("verificationBtn").classList.add("hidden");
+        } else {
+          $("verificationBtn").classList.remove("hidden");
+          const requestSnap = await getDoc(
+            doc(db, "verificationRequests", user.uid)
+          );
+          if (version !== authViewVersion) return;
+
+          if (requestSnap.exists()) {
+            const status = requestSnap.data().status;
+            const labels = {
+              pending: "Заявка ожидает рассмотрения.",
+              approved: "Заявка одобрена.",
+              rejected: "Заявка отклонена."
+            };
+            $("verificationStatus").textContent =
+              labels[status] || "Статус заявки неизвестен.";
+          } else {
+            $("verificationStatus").textContent =
+              "У тебя пока нет заявки.";
+          }
+        }
+      } else {
+        $("recentUsersStatus").textContent =
+          "Профиль не найден. Поиск может быть недоступен.";
+        $("verificationStatus").textContent = "Профиль не найден.";
       }
 
       renderRecentUsers();
-    });
 
-    // Вход в существующий аккаунт.
-    $("loginBtn").addEventListener("click", async () => {
-      const email = $("email").value.trim();
-      const password = $("password").value;
-
-      if (!email || !password) {
-        $("authStatus").textContent = "Введи email и пароль.";
-        return;
+      if (user.uid === ADMIN_UID) {
+        await loadVerificationRequests();
       }
-
-      $("loginBtn").disabled = true;
-      $("authStatus").textContent = "Входим…";
-
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-        $("authStatus").textContent = "";
-      } catch (error) {
-        $("authStatus").textContent = showError(error);
-      } finally {
-        $("loginBtn").disabled = false;
-      }
-    });
-
-    // Регистрация и резервирование ника.
-    $("registerBtn").addEventListener("click", async () => {
-      const username = normalizeUsername($("username").value);
-      const email = $("email").value.trim();
-      const password = $("password").value;
-
-      if (!/^[a-z0-9_]{3,20}$/.test(username)) {
-        $("authStatus").textContent =
-          "Имя: 3–20 символов, латинские буквы, цифры или _.";
-        return;
-      }
-
-      if (!email || !password) {
-        $("authStatus").textContent = "Введи email и пароль.";
-        return;
-      }
-
-      if (password.length < 6) {
-        $("authStatus").textContent =
-          "Пароль должен содержать минимум 6 символов.";
-        return;
-      }
-
-      $("registerBtn").disabled = true;
-      let createdUser = null;
-
-      try {
-        $("authStatus").textContent = "Создаём аккаунт…";
-
-        const credential = await createUserWithEmailAndPassword(
-          auth, email, password
-        );
-
-        createdUser = credential.user;
-
-        const usernameRef = doc(db, "usernames", username);
-        const userRef = doc(db, "users", createdUser.uid);
-
-        await runTransaction(db, async transaction => {
-          const existingName = await transaction.get(usernameRef);
-
-          if (existingName.exists()) {
-            throw new Error("USERNAME_TAKEN");
-          }
-
-          transaction.set(usernameRef, {
-            uid: createdUser.uid
-          });
-
-          transaction.set(userRef, {
-            username,
-            createdAt: serverTimestamp()
-          });
-        });
-
-        await updateProfile(createdUser, {
-          displayName: username
-        });
-
-        $("authStatus").textContent = "Аккаунт создан!";
-      } catch (error) {
-        if (error.message === "USERNAME_TAKEN") {
-          $("authStatus").textContent =
-            "Это имя уже занято. Выбери другое.";
-        } else {
-          $("authStatus").textContent =
-            "Ошибка регистрации: " + showError(error);
-
-          if (createdUser) {
-            $("authStatus").textContent +=
-              " Аккаунт мог создаться без профиля. Попробуй войти в него.";
-          }
-        }
-      } finally {
-        $("registerBtn").disabled = false;
-      }
-    });
-
-    // Выход.
-    $("logoutBtn").addEventListener("click", async () => {
-      try {
-        await signOut(auth);
-      } catch (error) {
-        alert(showError(error));
-      }
-    });
-
-    // Поиск пользователя по нику.
-    async function searchUser() {
-      const version = ++searchVersion;
-      const username = normalizeUsername($("searchUsername").value);
-
-      $("searchResult").replaceChildren();
-      $("searchStatus").textContent = "";
-
-      if (!/^[a-z0-9_]{3,20}$/.test(username)) {
-        $("searchStatus").textContent =
-          "Введи имя из 3–20 латинских букв, цифр или _.";
-        return;
-      }
-
-      const currentUser = auth.currentUser;
-
-      if (!currentUser) {
-        $("searchStatus").textContent = "Сначала войди в аккаунт.";
-        return;
-      }
-
-      $("searchBtn").disabled = true;
-      $("searchStatus").textContent = "Ищем пользователя…";
-
-      try {
-        const usernameSnapshot = await getDoc(
-          doc(db, "usernames", username)
-        );
-
-        if (version !== searchVersion) return;
-
-        if (!usernameSnapshot.exists()) {
-          $("searchStatus").textContent = "Пользователь не найден.";
-          return;
-        }
-
-        const uid = usernameSnapshot.data().uid;
-
-        if (!uid) {
-          $("searchStatus").textContent =
-            "У этого ника отсутствует профиль.";
-          return;
-        }
-
-        if (uid === currentUser.uid) {
-          $("searchStatus").textContent =
-            "Это твой собственный аккаунт.";
-          return;
-        }
-
-        const profileSnapshot = await getDoc(
-          doc(db, "users", uid)
-        );
-
-        if (version !== searchVersion) return;
-
-        if (!profileSnapshot.exists()) {
-          $("searchStatus").textContent =
-            "Профиль не найден. Возможно, регистрация не завершилась.";
-          return;
-        }
-
-        const foundUsername =
-          profileSnapshot.data().username || username;
-
-        addUserRow(
-          $("searchResult"),
-          foundUsername,
-          uid,
-          "Личная переписка без заявок в друзья"
-        );
-
-        saveRecentUser(foundUsername, uid);
-        $("searchStatus").textContent = "";
-      } catch (error) {
-        if (version === searchVersion) {
-          $("searchStatus").textContent = showError(error);
-        }
-      } finally {
-        if (version === searchVersion) {
-          $("searchBtn").disabled = false;
-        }
-      }
+    } catch (error) {
+      if (version !== authViewVersion) return;
+      console.error("Ошибка загрузки профиля:", error);
+      $("recentUsersStatus").textContent =
+        "Не удалось загрузить профиль: " + showError(error);
+      $("verificationStatus").textContent = showError(error);
     }
-
-    $("searchBtn").addEventListener("click", searchUser);
-
-    $("searchUsername").addEventListener("keydown", event => {
-      if (event.key === "Enter") {
-        searchUser();
-      }
-    });
-
-    // Обновление интерфейса при входе и выходе.
-    onAuthStateChanged(auth, async user => {
-      const version = ++authViewVersion;
-      searchVersion++;
-
-      $("authPanel").classList.toggle("hidden", !!user);
-      $("appPanel").classList.toggle("hidden", !user);
-      $("logoutBtn").classList.toggle("hidden", !user);
-
-      $("searchResult").replaceChildren();
-      $("searchStatus").textContent = "";
-      $("recentUsersList").replaceChildren();
-
-      if (!user) {
-        $("myUsername").textContent = "";
-        $("recentUsersStatus").textContent =
-          "Войди, чтобы увидеть историю поиска.";
-        return;
-      }
-
-      $("myUsername").textContent =
-        user.displayName || "пользователь";
-
-      $("recentUsersStatus").textContent = "Загружаем историю…";
-
-      try {
-        const profileSnapshot = await getDoc(
-          doc(db, "users", user.uid)
-        );
-
-        if (version !== authViewVersion) return;
-
-        if (profileSnapshot.exists()) {
-          $("myUsername").textContent =
-            profileSnapshot.data().username ||
-            user.displayName ||
-            "пользователь";
-        } else {
-          $("recentUsersStatus").textContent =
-            "Профиль не найден. Поиск может быть недоступен.";
-        }
-
-        renderRecentUsers();
-      } catch (error) {
-        if (version !== authViewVersion) return;
-
-        console.error("Ошибка загрузки профиля:", error);
-
-        $("recentUsersStatus").textContent =
-          "Не удалось загрузить профиль: " + showError(error);
-      }
-    });
-  </script>
+  });
+</script>
 </body>
 </html>
