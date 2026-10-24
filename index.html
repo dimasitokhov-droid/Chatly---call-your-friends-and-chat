@@ -11,53 +11,36 @@
   <style>
     * { box-sizing: border-box; }
     body {
-      margin: 0;
-      min-height: 100vh;
-      background: #101522;
-      color: #f5f7ff;
-      font-family: Arial, sans-serif;
+      margin: 0; min-height: 100vh; background: #101522;
+      color: #f5f7ff; font-family: Arial, sans-serif;
     }
     header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 18px 5%;
-      background: #171f30;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; padding: 18px 5%; background: #171f30;
       border-bottom: 1px solid #303b55;
     }
     .logo { color: #9aa9ff; font-size: 27px; font-weight: bold; }
     main { width: min(650px, 94%); margin: 25px auto; }
     .panel {
-      background: #1a2233;
-      border: 1px solid #303b55;
-      border-radius: 17px;
-      padding: 20px;
-      margin-bottom: 18px;
+      background: #1a2233; border: 1px solid #303b55;
+      border-radius: 17px; padding: 20px; margin-bottom: 18px;
     }
     h1 { font-size: 25px; margin: 0 0 10px; }
     h2 { font-size: 20px; margin: 0 0 10px; }
+    h3 { font-size: 17px; margin: 18px 0 8px; }
     p { color: #b7c1d8; line-height: 1.5; }
     input, button {
-      width: 100%;
-      padding: 13px;
-      margin-top: 10px;
-      border-radius: 10px;
-      font-size: 16px;
+      width: 100%; padding: 13px; margin-top: 10px;
+      border-radius: 10px; font-size: 16px;
     }
     input {
-      background: #111827;
-      color: white;
-      border: 1px solid #3a4762;
-      outline: none;
+      background: #111827; color: white;
+      border: 1px solid #3a4762; outline: none;
     }
     input:focus { border-color: #8b9cff; }
     button {
-      background: #7588ff;
-      color: white;
-      border: 0;
-      font-weight: bold;
-      cursor: pointer;
+      background: #7588ff; color: white; border: 0;
+      font-weight: bold; cursor: pointer;
     }
     button:hover { filter: brightness(1.08); }
     button:disabled { opacity: .6; cursor: wait; }
@@ -65,35 +48,20 @@
     .danger { background: #a63d55; }
     .hidden { display: none !important; }
     .muted {
-      color: #aab5cd;
-      font-size: 13px;
-      overflow-wrap: anywhere;
+      color: #aab5cd; font-size: 13px; overflow-wrap: anywhere;
     }
     .entry {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 13px 0;
-      border-bottom: 1px solid #303b55;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 13px 0; border-bottom: 1px solid #303b55;
     }
     .entry:last-child { border-bottom: 0; }
     .entryInfo { min-width: 0; overflow-wrap: anywhere; }
     .entry button { width: auto; min-width: 95px; margin: 0; }
     .verified {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 18px;
-      height: 18px;
-      margin-left: 5px;
-      border-radius: 50%;
-      background: #2589ff;
-      color: white;
-      font-size: 13px;
-      font-weight: bold;
-      vertical-align: middle;
-      flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; margin-left: 5px; border-radius: 50%;
+      background: #2589ff; color: white; font-size: 13px;
+      font-weight: bold; vertical-align: middle; flex-shrink: 0;
     }
     .status { overflow-wrap: anywhere; }
     @media (max-width: 420px) {
@@ -146,7 +114,21 @@
 
     <section id="adminPanel" class="panel hidden">
       <h2>🛡️ Панель администратора</h2>
-      <p>Заявки на синюю галочку.</p>
+
+      <h3>🔵 Выдать или снять галочку</h3>
+      <p>Введи имя пользователя без символа @.</p>
+
+      <input id="adminUsernameInput"
+        placeholder="Например: dimasitokhov"
+        maxlength="20" autocomplete="off">
+
+      <button id="adminVerifyUserBtn">Выдать синюю галочку</button>
+      <button id="adminRemoveVerifyBtn" class="danger">Снять синюю галочку</button>
+      <p id="adminUserVerifyStatus" class="status" role="status"></p>
+
+      <hr style="border-color:#303b55;margin:22px 0">
+
+      <h3>📨 Заявки на верификацию</h3>
       <button id="refreshRequestsBtn" class="secondary">Обновить заявки</button>
       <div id="verificationRequests"></div>
       <p id="adminStatus" class="status" role="status"></p>
@@ -185,7 +167,8 @@
 
   import {
     getFirestore, doc, getDoc, getDocs, collection,
-    runTransaction, serverTimestamp, setDoc, writeBatch
+    runTransaction, serverTimestamp, setDoc, writeBatch,
+    updateDoc
   } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -313,7 +296,6 @@
     }
   }
 
-  // История поиска загружает актуальные ники и статус галочки из Firestore.
   async function renderRecentUsers() {
     const version = ++recentRenderVersion;
     const list = $("recentUsersList");
@@ -350,7 +332,6 @@
       } catch (error) {
         console.error("Не удалось загрузить профиль:", error);
         if (version !== recentRenderVersion) return;
-
         addUserRow(list, item.username, item.uid, "Недавно искал", false);
       }
     }
@@ -463,7 +444,7 @@
     }
   });
 
-  // Заявка на верификацию
+  // Отправка заявки на синюю галочку.
   $("verificationBtn").addEventListener("click", async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -496,7 +477,7 @@
       if (requestSnap.exists()) {
         const labels = {
           pending: "Твоя заявка уже ожидает рассмотрения.",
-          approved: "Заявка одобрена! Твой профиль подтверждён.",
+          approved: "Заявка была одобрена ранее, но сейчас галочка снята.",
           rejected: "Заявка отклонена. Обратись к администратору Chatly."
         };
 
@@ -521,6 +502,7 @@
     }
   });
 
+  // Загрузка заявок для администратора.
   async function loadVerificationRequests() {
     if (auth.currentUser?.uid !== ADMIN_UID) return;
 
@@ -584,6 +566,7 @@
     }
   }
 
+  // Одобрение или отклонение заявки.
   async function reviewRequest(uid, approve) {
     if (auth.currentUser?.uid !== ADMIN_UID) {
       $("adminStatus").textContent = "Нет прав администратора.";
@@ -623,10 +606,9 @@
       await loadVerificationRequests();
 
       if (auth.currentUser?.uid === uid) {
-        renderMyName(
-          $("myUsername").textContent.replace("✓", "").trim(),
-          approve
-        );
+        const profileSnap = await getDoc(profileRef);
+        const profile = profileSnap.exists() ? profileSnap.data() : {};
+        renderMyName(profile.username || "пользователь", approve);
       }
     } catch (error) {
       $("adminStatus").textContent =
@@ -635,6 +617,112 @@
   }
 
   $("refreshRequestsBtn").addEventListener("click", loadVerificationRequests);
+
+  // Выдать или снять галочку по нику.
+  async function setUserVerification(verified) {
+    const status = $("adminUserVerifyStatus");
+
+    if (auth.currentUser?.uid !== ADMIN_UID) {
+      status.textContent = "Нет прав администратора.";
+      return;
+    }
+
+    const username = normalizeUsername($("adminUsernameInput").value);
+
+    if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+      status.textContent =
+        "Введи ник: 3–20 латинских букв, цифр или _.";
+      return;
+    }
+
+    const giveButton = $("adminVerifyUserBtn");
+    const removeButton = $("adminRemoveVerifyBtn");
+
+    giveButton.disabled = true;
+    removeButton.disabled = true;
+    status.textContent = "Ищем пользователя…";
+
+    try {
+      // Находим UID через уникальный ник.
+      const usernameSnap = await getDoc(doc(db, "usernames", username));
+
+      if (!usernameSnap.exists()) {
+        status.textContent = "Пользователь с таким ником не найден.";
+        return;
+      }
+
+      const uid = usernameSnap.data().uid;
+
+      if (!uid) {
+        status.textContent = "Для этого ника не найден UID.";
+        return;
+      }
+
+      const profileRef = doc(db, "users", uid);
+      const profileSnap = await getDoc(profileRef);
+
+      if (!profileSnap.exists()) {
+        status.textContent = "Профиль пользователя не найден.";
+        return;
+      }
+
+      const profile = profileSnap.data();
+      const requestRef = doc(db, "verificationRequests", uid);
+      const requestSnap = await getDoc(requestRef);
+
+      // Выполняем изменения одним пакетом.
+      const batch = writeBatch(db);
+      batch.update(profileRef, { verified });
+
+      // При выдаче галочки автоматически одобряем ожидающую заявку.
+      if (
+        verified &&
+        requestSnap.exists() &&
+        requestSnap.data().status === "pending"
+      ) {
+        batch.update(requestRef, {
+          status: "approved",
+          reviewedAt: serverTimestamp(),
+          reviewedBy: ADMIN_UID
+        });
+      }
+
+      await batch.commit();
+
+      status.textContent = verified
+        ? "Готово! @" + (profile.username || username) +
+          " получил синюю галочку ✓"
+        : "Синяя галочка у @" + (profile.username || username) + " снята.";
+
+      // Если администратор меняет собственный профиль, обновляем имя.
+      if (uid === auth.currentUser.uid) {
+        renderMyName(profile.username || username, verified);
+        $("verificationStatus").textContent = verified
+          ? "Твой профиль подтверждён синей галочкой!"
+          : "Синяя галочка снята.";
+        $("verificationBtn").classList.toggle("hidden", verified);
+      }
+
+      await loadVerificationRequests();
+    } catch (error) {
+      status.textContent = "Ошибка: " + showError(error);
+    } finally {
+      giveButton.disabled = false;
+      removeButton.disabled = false;
+    }
+  }
+
+  $("adminVerifyUserBtn").addEventListener("click", () =>
+    setUserVerification(true)
+  );
+
+  $("adminRemoveVerifyBtn").addEventListener("click", () =>
+    setUserVerification(false)
+  );
+
+  $("adminUsernameInput").addEventListener("keydown", event => {
+    if (event.key === "Enter") setUserVerification(true);
+  });
 
   async function searchUser() {
     const version = ++searchVersion;
@@ -694,17 +782,16 @@
       }
 
       const profile = profileSnapshot.data();
-      const foundUsername = profile.username || username;
 
       addUserRow(
         $("searchResult"),
-        foundUsername,
+        profile.username || username,
         uid,
         "Личная переписка без заявок в друзья",
         profile.verified === true
       );
 
-      saveRecentUser(foundUsername, uid);
+      saveRecentUser(profile.username || username, uid);
       $("searchStatus").textContent = "";
     } catch (error) {
       if (version === searchVersion) {
@@ -787,7 +874,7 @@
         if (requestSnap.exists()) {
           const labels = {
             pending: "Заявка ожидает рассмотрения.",
-            approved: "Заявка одобрена.",
+            approved: "Заявка была одобрена ранее, но сейчас галочка снята.",
             rejected: "Заявка отклонена."
           };
 
