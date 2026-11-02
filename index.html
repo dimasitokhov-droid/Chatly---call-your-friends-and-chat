@@ -69,7 +69,6 @@ button:hover{filter:brightness(1.08)}button:disabled{opacity:.6;cursor:wait}
       <p>Ищи пользователей и начинай переписку без заявок в друзья.</p>
     </section>
 
-    <!-- Chatly Guard: настройки этого браузера, не серверная MFA -->
     <section class="panel" id="guardPanel">
       <div class="guard-head">
         <div>
@@ -100,7 +99,7 @@ button:hover{filter:brightness(1.08)}button:disabled{opacity:.6;cursor:wait}
         <label class="guard-toggle"><input id="notifyMessages" type="checkbox"> <span>Уведомления о сообщениях</span></label>
         <label class="guard-toggle"><input id="notifyCalls" type="checkbox"> <span>Уведомления о звонках</span></label>
         <label class="guard-toggle"><input id="notifySecurity" type="checkbox"> <span>Уведомления о безопасности</span></label>
-        <p class="muted">Браузерные уведомления доступны, пока Chatly открыта. Push-уведомления при закрытом сайте пока не подключены.</p>
+        <p class="muted">Тестовые уведомления работают через Service Worker. Push-уведомления о новых событиях при закрытом сайте пока не подключены.</p>
       </div>
 
       <div class="guard-item">
@@ -160,7 +159,6 @@ button:hover{filter:brightness(1.08)}button:disabled{opacity:.6;cursor:wait}
     </section>
   </div>
 </main>
-
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import {
@@ -185,6 +183,31 @@ const ADMIN_UID="71glZGFXSrYum2HdrgG7wOENrC72";
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
 const $=id=>document.getElementById(id);
 let authVersion=0,searchVersion=0,recentVersion=0;
+let chatlyServiceWorkerRegistration=null;
+
+/* Подключаем Service Worker для Android Chrome */
+async function registerChatlyServiceWorker(){
+  if(!("serviceWorker" in navigator)){
+    $("notificationStatus").textContent="Этот браузер не поддерживает Service Worker.";
+    return null;
+  }
+  if(!window.isSecureContext){
+    $("notificationStatus").textContent="Для уведомлений нужен защищённый HTTPS-сайт.";
+    return null;
+  }
+  try{
+    chatlyServiceWorkerRegistration=await navigator.serviceWorker.register("./sw.js");
+    await navigator.serviceWorker.ready;
+    console.log("Chatly Service Worker подключён.");
+    updateNotificationStatus();
+    return chatlyServiceWorkerRegistration;
+  }catch(error){
+    console.error("Ошибка Service Worker:",error);
+    $("notificationStatus").textContent="Не удалось подключить Service Worker: "+(error.message||error);
+    return null;
+  }
+}
+registerChatlyServiceWorker();
 
 function errorText(error){
   console.error(error);
@@ -235,225 +258,137 @@ function renderGuard(){
   $("deviceDescription").textContent="Это устройство · "+device+" · текущий браузер";
   updateNotificationStatus();renderSecurityHistory();
 }
-function saveGuardSetting(name,value){
-  const settings=readGuard();settings[name]=value;writeGuard(settings);
-  addSecurityEvent("Изменена настройка: "+name);
-  renderGuard();
-}
 function updateNotificationStatus(){
-  const el=$("notificationStatus");
-  if(!("Notification" in window)){el.textContent="Этот браузер не поддерживает уведомления.";return}
-  const labels={granted:"Уведомления разрешены.",denied:"Уведомления запрещены в настройках браузера.",default:"Разрешение на уведомления ещё не выдано."};
-  el.textContent=labels[Notification.permission]||"Статус уведомлений неизвестен.";
+  if(!("Notification" in window)){
+    $("notificationStatus").textContent="Этот браузер не поддерживает уведомления.";
+    return;
+  }
+  const permission=Notification.permission;
+  if(permission==="granted"){
+    $("notificationStatus").textContent="Уведомления разрешены.";
+  }else if(permission==="denied"){
+    $("notificationStatus").textContent="Уведомления заблокированы в настройках браузера.";
+  }else{
+    $("notificationStatus").textContent="Разрешение на уведомления ещё не выдано.";
+  }
 }
-$("guardEnabled").addEventListener("change",e=>saveGuardSetting("enabled",e.target.checked));
-$("notifyMessages").addEventListener("change",e=>saveGuardSetting("messages",e.target.checked));
-$("notifyCalls").addEventListener("change",e=>saveGuardSetting("calls",e.target.checked));
-$("notifySecurity").addEventListener("change",e=>saveGuardSetting("security",e.target.checked));
-$("enableNotifications").addEventListener("click",async()=>{
-  if(!("Notification" in window)){updateNotificationStatus();return}
-  try{const result=await Notification.requestPermission();updateNotificationStatus();if(result==="granted")addSecurityEvent("Разрешены браузерные уведомления")}
-  catch{ $("notificationStatus").textContent="Не удалось запросить разрешение."}
+$("guardEnabled").addEventListener("change",()=>{
+  const settings=readGuard();settings.enabled=$("guardEnabled").checked;writeGuard(settings);
+  $("guardState").textContent=settings.enabled?"Включён":"Выключен";
+  $("guardState").style.background=settings.enabled?"#25865b":"#596176";
+  addSecurityEvent(settings.enabled?"Chatly Guard включён":"Chatly Guard выключен");
 });
-$("testNotification").addEventListener("click",()=>{
-  if(!("Notification" in window)||Notification.permission!=="granted"){updateNotificationStatus();return}
-  try{new Notification("Chatly 💬",{body:"Тестовое уведомление работает."})}
-  catch{$("notificationStatus").textContent="Не удалось показать уведомление."}
+["notifyMessages","notifyCalls","notifySecurity"].forEach(id=>{
+  $(id).addEventListener("change",()=>{
+    const settings=readGuard();
+    settings[id==="notifyMessages"?"messages":id==="notifyCalls"?"calls":"security"]=$(id).checked;
+    writeGuard(settings);
+    addSecurityEvent("Изменены настройки уведомлений");
+  });
 });
 $("clearSecurityHistory").addEventListener("click",()=>{
-  const key=historyKey();if(key)localStorage.removeItem(key);renderSecurityHistory();
+  const key=historyKey();if(key)localStorage.removeItem(key);
+  renderSecurityHistory();
+});
+$("enableNotifications").addEventListener("click",async()=>{
+  if(!("Notification" in window)){updateNotificationStatus();return}
+  try{
+    await Notification.requestPermission();
+    updateNotificationStatus();
+    if(Notification.permission==="granted")addSecurityEvent("Разрешены уведомления");
+  }catch(error){
+    $("notificationStatus").textContent="Не удалось запросить разрешение: "+(error.message||error);
+  }
+});
+$("testNotification").addEventListener("click",async()=>{
+  if(!("Notification" in window)){updateNotificationStatus();return}
+  if(Notification.permission!=="granted"){
+    $("notificationStatus").textContent="Сначала разреши уведомления.";
+    return;
+  }
+  try{
+    const registration=chatlyServiceWorkerRegistration||await navigator.serviceWorker.ready;
+    await registration.showNotification("Chatly 💬",{
+      body:"Тестовое уведомление работает.",
+      icon:"./icon-192.png",
+      badge:"./icon-192.png",
+      tag:"chatly-test-notification"
+    });
+    $("notificationStatus").textContent="Тестовое уведомление отправлено.";
+  }catch(error){
+    console.error(error);
+    $("notificationStatus").textContent="Не удалось показать уведомление: "+(error.message||error);
+  }
 });
 
-function addBadges(parent,profile={}){
-  const badges=document.createElement("span");badges.className="badges";
-  if(profile.verified===true){const b=document.createElement("span");b.className="badge verified";b.textContent="✓";b.title="Подтверждённый профиль Chatly";badges.append(b)}
-  const values=Array.isArray(profile.badges)?profile.badges:[];
-  const definitions=[["tiktok","🎵","TikTok Creator"],["youtube","▶️","YouTube Creator"],["developer","💻","Разработчик Chatly"]];
-  for(const [id,icon,label] of definitions){if(!values.includes(id))continue;const b=document.createElement("span");b.className="badge "+id;b.textContent=icon;b.title=label;b.setAttribute("aria-label",label);badges.append(b)}
-  if(badges.childElementCount)parent.append(badges);
+/* Авторизация и профиль */
+let currentUser=null;
+let currentUsername="";
+let unsubscribeAuth=null;
+function showApp(user){
+  $("authPanel").classList.toggle("hidden",!!user);
+  $("appPanel").classList.toggle("hidden",!user);
+  $("logoutBtn").classList.toggle("hidden",!user);
 }
-function renderMyName(username,profile={}){
-  const target=$("myUsername");target.replaceChildren(document.createTextNode(username||"пользователь"));addBadges(target,profile);
-}
-function addUserRow(container,username,uid,subtitle,profile={}){
-  const row=document.createElement("div");row.className="entry";
-  const info=document.createElement("div");info.className="entryInfo";
-  const name=document.createElement("strong");name.append(document.createTextNode("@"+username));addBadges(name,profile);
-  const detail=document.createElement("div");detail.className="muted";detail.textContent=subtitle;
-  const button=document.createElement("button");button.textContent="Написать";
-  button.addEventListener("click",()=>{if(auth.currentUser&&uid)location.href="chat.html?uid="+encodeURIComponent(uid)});
-  info.append(name,detail);row.append(info,button);container.append(row);
-}
-function storageKey(){return auth.currentUser?"chatly_recent_usernames_"+auth.currentUser.uid:null}
-function getRecent(){try{return JSON.parse(localStorage.getItem(storageKey())||"[]").filter(x=>x&&x.uid&&x.username)}catch{return []}}
-function saveRecent(username,uid){
-  const key=storageKey();if(!key)return;
-  const list=getRecent().filter(x=>x.uid!==uid);list.unshift({username,uid});
-  localStorage.setItem(key,JSON.stringify(list.slice(0,20)));renderRecent();
-}
-async function renderRecent(){
-  const version=++recentVersion,list=$("recentUsersList");list.replaceChildren();
-  const recent=getRecent();
-  if(!recent.length){$("recentUsersStatus").textContent="Пока никого нет. Найди пользователя выше.";return}
-  $("recentUsersStatus").textContent="Загружаем историю…";
-  for(const item of recent){
-    if(version!==recentVersion)return;
-    try{const snap=await getDoc(doc(db,"users",item.uid));if(version!==recentVersion)return;const p=snap.exists()?snap.data():{};addUserRow(list,p.username||item.username,item.uid,"Недавно искал",p)}
-    catch{if(version!==recentVersion)return;addUserRow(list,item.username,item.uid,"Недавно искал",{})}
-  }
-  if(version===recentVersion)$("recentUsersStatus").textContent="Последние найденные пользователи";
-}
-$("clearRecentBtn").addEventListener("click",()=>{const key=storageKey();if(key)localStorage.removeItem(key);renderRecent()});
-
 $("loginBtn").addEventListener("click",async()=>{
   const email=$("email").value.trim(),password=$("password").value;
   if(!email||!password){$("authStatus").textContent="Введи email и пароль.";return}
-  $("loginBtn").disabled=true;$("authStatus").textContent="Входим…";
-  try{await signInWithEmailAndPassword(auth,email,password);$("authStatus").textContent=""}
-  catch(e){$("authStatus").textContent=errorText(e)}
-  finally{$("loginBtn").disabled=false}
+  $("authStatus").textContent="Входим…";
+  try{
+    await signInWithEmailAndPassword(auth,email,password);
+    $("authStatus").textContent="";
+  }catch(error){$("authStatus").textContent=errorText(error)}
 });
 $("registerBtn").addEventListener("click",async()=>{
-  const username=normalizeUsername($("username").value),email=$("email").value.trim(),password=$("password").value;
-  if(!/^[a-z0-9_]{3,20}$/.test(username)){$("authStatus").textContent="Имя: 3–20 символов, латинские буквы, цифры или _.";return}
-  if(!email||!password){$("authStatus").textContent="Введи email и пароль.";return}
-  if(password.length<6){$("authStatus").textContent="Пароль должен содержать минимум 6 символов.";return}
-  $("registerBtn").disabled=true;let createdUser=null;
-  try{
-    $("authStatus").textContent="Создаём аккаунт…";
-    const credential=await createUserWithEmailAndPassword(auth,email,password);createdUser=credential.user;
-    const nameRef=doc(db,"usernames",username),profileRef=doc(db,"users",createdUser.uid);
-    await runTransaction(db,async tx=>{const existing=await tx.get(nameRef);if(existing.exists())throw new Error("USERNAME_TAKEN");tx.set(nameRef,{uid:createdUser.uid});tx.set(profileRef,{username,createdAt:serverTimestamp(),verified:false,badges:[]})});
-    await updateProfile(createdUser,{displayName:username});$("authStatus").textContent="Аккаунт создан!";
-  }catch(e){$("authStatus").textContent=e.message==="USERNAME_TAKEN"?"Это имя уже занято. Выбери другое.":"Ошибка регистрации: "+errorText(e)+(createdUser?" Аккаунт мог создаться без профиля. Попробуй войти.":"")}
-  finally{$("registerBtn").disabled=false}
-});
-$("logoutBtn").addEventListener("click",async()=>{try{await signOut(auth)}catch(e){alert(errorText(e))}});
-
-$("verificationBtn").addEventListener("click",async()=>{
-  const user=auth.currentUser;if(!user)return;const btn=$("verificationBtn");btn.disabled=true;$("verificationStatus").textContent="Отправляем заявку…";
-  try{
-    const profileRef=doc(db,"users",user.uid),requestRef=doc(db,"verificationRequests",user.uid),profileSnap=await getDoc(profileRef);
-    if(!profileSnap.exists()){$("verificationStatus").textContent="Профиль не найден. Выйди и войди снова.";return}
-    const profile=profileSnap.data();
-    if(profile.verified===true){$("verificationStatus").textContent="У тебя уже есть синяя галочка ✓";return}
-    const requestSnap=await getDoc(requestRef);
-    if(requestSnap.exists()){
-      const labels={pending:"Твоя заявка уже ожидает рассмотрения.",approved:"Заявка одобрена ранее, но галочка сейчас снята.",rejected:"Заявка отклонена. Обратись к администратору."};
-      $("verificationStatus").textContent=labels[requestSnap.data().status]||"Заявка уже существует.";return;
-    }
-    await setDoc(requestRef,{uid:user.uid,username:profile.username||user.displayName||"",status:"pending",createdAt:serverTimestamp()});
-    $("verificationStatus").textContent="Заявка отправлена. Дождись решения администратора.";
-  }catch(e){$("verificationStatus").textContent=errorText(e)}finally{btn.disabled=false}
-});
-
-async function loadRequests(){
-  if(auth.currentUser?.uid!==ADMIN_UID)return;
-  const list=$("verificationRequests");list.replaceChildren();$("adminStatus").textContent="Загружаем заявки…";
-  try{
-    const snap=await getDocs(collection(db,"verificationRequests"));let count=0;
-    snap.forEach(s=>{
-      const r=s.data();if(r.status!=="pending")return;count++;
-      const row=document.createElement("div");row.className="entry";
-      const info=document.createElement("div");info.className="entryInfo";
-      const name=document.createElement("strong");name.textContent="@"+(r.username||"без ника");
-      const detail=document.createElement("div");detail.className="muted";detail.textContent="UID: "+r.uid;info.append(name,detail);
-      const actions=document.createElement("div");actions.style.display="flex";actions.style.flexDirection="column";actions.style.gap="6px";
-      const approve=document.createElement("button");approve.textContent="Одобрить";approve.addEventListener("click",()=>reviewRequest(s.id,true));
-      const reject=document.createElement("button");reject.textContent="Отклонить";reject.className="danger";reject.addEventListener("click",()=>reviewRequest(s.id,false));
-      actions.append(approve,reject);row.append(info,actions);list.append(row);
-    });
-    $("adminStatus").textContent=count?"Заявок на рассмотрении: "+count:"Новых заявок нет.";
-  }catch(e){$("adminStatus").textContent="Не удалось загрузить заявки: "+errorText(e)}
-}
-async function reviewRequest(uid,approved){
-  if(auth.currentUser?.uid!==ADMIN_UID)return;
-  try{
-    const reqRef=doc(db,"verificationRequests",uid),profileRef=doc(db,"users",uid),snap=await getDoc(reqRef);
-    if(!snap.exists()||snap.data().status!=="pending"){$("adminStatus").textContent="Заявка уже обработана или не найдена.";await loadRequests();return}
-    const batch=writeBatch(db);batch.update(reqRef,{status:approved?"approved":"rejected",reviewedAt:serverTimestamp(),reviewedBy:ADMIN_UID});
-    if(approved)batch.update(profileRef,{verified:true});await batch.commit();
-    $("adminStatus").textContent=approved?"Заявка одобрена.":"Заявка отклонена.";await loadRequests();
-    if(auth.currentUser.uid===uid){const p=(await getDoc(profileRef)).data();renderMyName(p.username,p)}
-  }catch(e){$("adminStatus").textContent="Ошибка: "+errorText(e)}
-}
-$("refreshRequestsBtn").addEventListener("click",loadRequests);
-
-async function setBadge(badge,enabled){
-  const status=$("badgeAdminStatus");
-  if(auth.currentUser?.uid!==ADMIN_UID){status.textContent="Нет прав администратора.";return}
-  const username=normalizeUsername($("adminUsernameInput").value);
-  if(!/^[a-z0-9_]{3,20}$/.test(username)){status.textContent="Введи ник: 3–20 латинских букв, цифр или _.";return}
-  status.textContent="Ищем пользователя…";
-  try{
-    const nameSnap=await getDoc(doc(db,"usernames",username));if(!nameSnap.exists()){status.textContent="Пользователь не найден.";return}
-    const uid=nameSnap.data().uid;if(!uid){status.textContent="UID пользователя не найден.";return}
-    const profileRef=doc(db,"users",uid),profileSnap=await getDoc(profileRef);if(!profileSnap.exists()){status.textContent="Профиль не найден.";return}
-    const profile=profileSnap.data();
-    if(badge==="verified")await updateDoc(profileRef,{verified:enabled});
-    else{const badges=Array.isArray(profile.badges)?profile.badges:[];const next=enabled?[...new Set([...badges,badge])]:badges.filter(x=>x!==badge);await updateDoc(profileRef,{badges:next})}
-    const labels={verified:"синюю галочку",tiktok:"бейдж TikTok",youtube:"бейдж YouTube",developer:"бейдж разработчика"};
-    status.textContent="Готово! У @"+(profile.username||username)+(enabled?" выдан":" снят")+" "+labels[badge]+".";
-    if(uid===auth.currentUser.uid){
-      const updated={...profile};
-      if(badge==="verified")updated.verified=enabled;
-      else{const old=Array.isArray(profile.badges)?profile.badges:[];updated.badges=enabled?[...new Set([...old,badge])]:old.filter(x=>x!==badge)}
-      renderMyName(updated.username||username,updated);$("verificationBtn").classList.toggle("hidden",updated.verified===true);
-    }
-  }catch(e){status.textContent="Ошибка: "+errorText(e)}
-}
-const badgeButtons=[["giveVerified","verified",true],["removeVerified","verified",false],["giveTiktok","tiktok",true],["removeTiktok","tiktok",false],["giveYoutube","youtube",true],["removeYoutube","youtube",false],["giveDeveloper","developer",true],["removeDeveloper","developer",false]];
-for(const [id,badge,enabled] of badgeButtons)$(id).addEventListener("click",()=>setBadge(badge,enabled));
-
-async function searchUser(){
-  const version=++searchVersion,username=normalizeUsername($("searchUsername").value);
-  $("searchResult").replaceChildren();$("searchStatus").textContent="";
-  if(!/^[a-z0-9_]{3,20}$/.test(username)){$("searchStatus").textContent="Введи имя из 3–20 латинских букв, цифр или _.";return}
-  const current=auth.currentUser;if(!current){$("searchStatus").textContent="Сначала войди в аккаунт.";return}
-  $("searchBtn").disabled=true;$("searchStatus").textContent="Ищем пользователя…";
-  try{
-    const nameSnap=await getDoc(doc(db,"usernames",username));if(version!==searchVersion)return;
-    if(!nameSnap.exists()){$("searchStatus").textContent="Пользователь не найден.";return}
-    const uid=nameSnap.data().uid;if(!uid){$("searchStatus").textContent="У ника отсутствует профиль.";return}
-    if(uid===current.uid){$("searchStatus").textContent="Это твой собственный аккаунт.";return}
-    const profileSnap=await getDoc(doc(db,"users",uid));if(version!==searchVersion)return;
-    if(!profileSnap.exists()){$("searchStatus").textContent="Профиль не найден.";return}
-    const profile=profileSnap.data();addUserRow($("searchResult"),profile.username||username,uid,"Личная переписка без заявок в друзья",profile);
-    saveRecent(profile.username||username,uid);$("searchStatus").textContent="";
-  }catch(e){if(version===searchVersion)$("searchStatus").textContent=errorText(e)}
-  finally{if(version===searchVersion)$("searchBtn").disabled=false}
-}
-$("searchBtn").addEventListener("click",searchUser);
-$("searchUsername").addEventListener("keydown",e=>{if(e.key==="Enter")searchUser()});
-$("adminUsernameInput").addEventListener("keydown",e=>{if(e.key==="Enter")setBadge("verified",true)});
-
-onAuthStateChanged(auth,async user=>{
-  const version=++authVersion;searchVersion++;recentVersion++;
-  $("authPanel").classList.toggle("hidden",!!user);$("appPanel").classList.toggle("hidden",!user);$("logoutBtn").classList.toggle("hidden",!user);
-  $("searchResult").replaceChildren();$("searchStatus").textContent="";$("recentUsersList").replaceChildren();
-  $("adminPanel").classList.toggle("hidden",!user||user.uid!==ADMIN_UID);
-  if(!user){
-    renderMyName("",{});$("recentUsersStatus").textContent="Войди, чтобы увидеть историю поиска.";
-    $("verificationStatus").textContent="";$("verificationBtn").classList.remove("hidden");return;
+  const username=normalizeUsername($("username").value);
+  const email=$("email").value.trim(),password=$("password").value;
+  if(!/^[a-z0-9_]{3,20}$/.test(username)){
+    $("authStatus").textContent="Ник: 3–20 символов, латинские буквы, цифры или _.";return;
   }
-  renderMyName(user.displayName||"пользователь",{});$("recentUsersStatus").textContent="Загружаем историю…";$("verificationStatus").textContent="Проверяем статус…";
-  renderGuard();
+  if(!email||password.length<6||password.length>128){
+    $("authStatus").textContent="Введи email и пароль от 6 до 128 символов.";return;
+  }
+  $("authStatus").textContent="Создаём аккаунт…";
   try{
-    const profileSnap=await getDoc(doc(db,"users",user.uid));if(version!==authVersion)return;
-    if(!profileSnap.exists()){$("recentUsersStatus").textContent="Профиль не найден. Поиск может быть недоступен.";$("verificationStatus").textContent="Профиль не найден.";return}
-    const profile=profileSnap.data(),username=profile.username||user.displayName||"пользователь";
-    renderMyName(username,profile);
-    if(profile.verified===true){$("verificationStatus").textContent="Твой профиль подтверждён синей галочкой!";$("verificationBtn").classList.add("hidden")}
-    else{
-      $("verificationBtn").classList.remove("hidden");const req=await getDoc(doc(db,"verificationRequests",user.uid));if(version!==authVersion)return;
-      if(req.exists()){
-        const labels={pending:"Заявка ожидает рассмотрения.",approved:"Заявка была одобрена ранее, но галочка сейчас снята.",rejected:"Заявка отклонена."};
-        $("verificationStatus").textContent=labels[req.data().status]||"Статус заявки неизвестен.";
-      }else $("verificationStatus").textContent="У тебя пока нет заявки.";
-    }
-    await renderRecent();if(version!==authVersion)return;if(user.uid===ADMIN_UID)await loadRequests();
-  }catch(e){if(version!==authVersion)return;$("recentUsersStatus").textContent="Не удалось загрузить профиль: "+errorText(e);$("verificationStatus").textContent=errorText(e)}
+    const credential=await createUserWithEmailAndPassword(auth,email,password);
+    const uid=credential.user.uid;
+    await runTransaction(db,async transaction=>{
+      const usernameRef=doc(db,"usernames",username);
+      const userRef=doc(db,"users",uid);
+      const existing=await transaction.get(usernameRef);
+      if(existing.exists())throw new Error("Этот ник уже занят.");
+      transaction.set(usernameRef,{uid,createdAt:serverTimestamp()});
+      transaction.set(userRef,{username,createdAt:serverTimestamp(),badges:{}});
+    });
+    currentUsername=username;
+    $("authStatus").textContent="";
+  }catch(error){
+    $("authStatus").textContent=errorText(error);
+  }
 });
-</script>
-</body>
-</html>
+$("logoutBtn").addEventListener("click",async()=>{
+  try{await signOut(auth)}catch(error){$("authStatus").textContent=errorText(error)}
+});
+onAuthStateChanged(auth,async user=>{
+  currentUser=user;
+  if(!user){
+    currentUsername="";
+    showApp(null);
+    return;
+  }
+  showApp(user);
+  try{
+    const userSnap=await getDoc(doc(db,"users",user.uid));
+    if(!userSnap.exists()){
+      $("authStatus").textContent="Профиль не найден. Обратись к администратору.";
+      await signOut(auth);return;
+    }
+    currentUsername=userSnap.data().username||"";
+    $("myUsername").textContent="@"+currentUsername;
+    renderGuard();
+    await loadVerificationStatus();
+    if(user.uid===ADMIN_UID)$("adminPanel").classList.remove("hidden");
+    else $("adminPanel").classList.add("hidden");
+    loadRecentUsers();
+  }catch(error){$("authStatus").textContent=errorText(error)}
+});
