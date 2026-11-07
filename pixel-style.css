@@ -1,0 +1,115 @@
+/* Chatly — Google Pixel / Material You Expressive */
+:root{
+  color-scheme:dark;
+  --bg:#111318;
+  --surface:#1e1f25;
+  --surface-high:#292a31;
+  --surface-low:#191a20;
+  --primary:#d0bcff;
+  --on-primary:#381e72;
+  --secondary:#c9c4d5;
+  --outline:#49454f;
+  --text:#e6e1e9;
+  --muted:#cac4d0;
+  --radius:28px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;min-height:100vh;background:var(--bg);color:var(--text);
+  font-family:Roboto,"Google Sans",Arial,sans-serif;
+  -webkit-tap-highlight-color:transparent;
+}
+header{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:18px 5%;background:var(--surface-low);border-bottom:1px solid #303039;
+}
+.logo{color:var(--primary);font-size:28px;font-weight:700;letter-spacing:-1px}
+main{width:min(650px,94%);margin:25px auto}
+.panel{
+  background:var(--surface);border:1px solid #34353d;border-radius:var(--radius);
+  padding:22px;margin-bottom:18px;box-shadow:0 3px 12px #00000018;
+  animation:panelAppear .38s cubic-bezier(.2,.8,.2,1) both;
+}
+h1{font-size:25px;letter-spacing:-.6px;margin:0 0 10px}
+h2{font-size:20px;letter-spacing:-.3px;margin:0 0 10px}
+h3{font-size:17px;margin:18px 0 8px}
+p{color:var(--muted);line-height:1.55}
+input,button{
+  width:100%;padding:15px 17px;margin-top:10px;border-radius:18px;
+  font-size:16px;font-family:inherit;
+}
+input{
+  background:var(--surface-high);color:var(--text);border:1px solid transparent;
+  outline:none;transition:border-color .22s,background .22s,box-shadow .22s;
+}
+input:focus{border-color:var(--primary);background:#303039;box-shadow:0 0 0 3px #d0bcff22}
+input::placeholder{color:#aaa5b2}
+
+/* Material ripple: the wave starts exactly where the user touches */
+button{
+  position:relative;overflow:hidden;isolation:isolate;
+  background:var(--primary);color:var(--on-primary);
+  border:0;font-weight:700;cursor:pointer;min-height:50px;
+  box-shadow:0 2px 5px #00000020;
+  transition:transform .32s cubic-bezier(.2,1.4,.4,1),
+             filter .22s ease,box-shadow .25s ease,background .25s ease;
+  touch-action:manipulation;
+  -webkit-user-select:none;user-select:none;
+}
+button::after{
+  content:"";position:absolute;z-index:0;left:var(--ripple-x,50%);top:var(--ripple-y,50%);
+  width:12px;height:12px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(255,255,255,.48) 0%,rgba(255,255,255,.2) 48%,transparent 72%);
+  transform:translate(-50%,-50%) scale(0);opacity:0;
+}
+button.ripple-active::after{animation:pixelRipple .62s ease-out}
+button:active{transform:scale(.955);filter:brightness(.94);box-shadow:none}
+button:hover:not(:disabled){filter:brightness(1.07);transform:translateY(-1px)}
+button:focus-visible{outline:3px solid var(--secondary);outline-offset:3px}
+button:disabled{opacity:.55;cursor:wait;transform:none}
+.secondary{background:var(--surface-high);color:var(--text);border:1px solid var(--outline);box-shadow:none}
+.danger{background:#93000a;color:#ffdad6}
+.hidden{display:none!important}
+.muted{color:#aaa5b2;font-size:13px;overflow-wrap:anywhere}
+.entry{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:14px 0;border-bottom:1px solid #383840;
+}
+.entry:last-child{border-bottom:0}
+.entryInfo{min-width:0;overflow-wrap:anywhere}
+.entry button{width:auto;min-width:100px;margin:0;padding:12px 18px;border-radius:50px}
+.badges{display:inline-flex;flex-wrap:wrap;gap:4px;vertical-align:middle;margin-left:5px}
+.badge{
+  display:inline-flex;align-items:center;justify-content:center;min-width:22px;
+  height:22px;padding:2px 6px;border-radius:8px;font-size:12px;font-weight:bold;color:white;
+}
+.verified{border-radius:50%;background:#2589ff}
+.tiktok{background:#242424;border:1px solid #59606c}
+.youtube{background:#e62117}
+.developer{background:#7651d6}
+.status{overflow-wrap:anywhere}
+.badgeControls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.badgeControls button{font-size:14px;border-radius:18px}
+hr{border:0;border-top:1px solid #383840;margin:22px 0}
+#logoutBtn{border-radius:50px;padding:11px 20px}
+
+/* Smooth entrance and springy touch feedback */
+@keyframes pixelRipple{
+  0%{transform:translate(-50%,-50%) scale(0);opacity:.78}
+  65%{opacity:.34}
+  100%{transform:translate(-50%,-50%) scale(19);opacity:0}
+}
+@keyframes panelAppear{
+  from{opacity:0;transform:translateY(12px) scale(.985)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+@media(max-width:420px){
+  .panel{padding:17px;border-radius:24px}
+  .entry{align-items:flex-start}
+  .entry button{min-width:85px;padding:11px 14px}
+  .badgeControls{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
