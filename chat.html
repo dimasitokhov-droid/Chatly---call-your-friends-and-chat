@@ -69,10 +69,45 @@
   <div id="notice" role="status"></div>
 
   <section id="composer">
-    <div class="tools">
-      <button id="gallery" type="button">🖼️ Галерея</button>
-      <button id="camera" type="button">📷 Камера</button>
-    </div>
+<div class="tools">
+  <button id="gallery" type="button">🖼️ Галерея</button>
+  <button id="camera" type="button">📷 Камера</button>
+</div>
+
+<div class="chat-features">
+  <label>
+    ✨ Эффект
+    <select id="messageEffect">
+      <option value="none">Обычный</option>
+      <option value="hologram">Голограмма</option>
+      <option value="glow">Свечение</option>
+      <option value="sparkle">Искры</option>
+      <option value="neon">Неон</option>
+    </select>
+  </label>
+
+  <label>
+    ⏳ Таймер
+    <select id="messageExpiry">
+      <option value="0">Без таймера</option>
+      <option value="60">1 минута</option>
+      <option value="3600">1 час</option>
+      <option value="86400">24 часа</option>
+    </select>
+  </label>
+
+  <label>
+    🌈 Тема
+    <select id="chatTheme">
+      <option value="pixel">Pixel</option>
+      <option value="aurora">Северное сияние</option>
+      <option value="midnight">Полночь</option>
+      <option value="sunset">Закат</option>
+      <option value="ocean">Океан</option>
+      <option value="neon">Неон</option>
+    </select>
+  </label>
+</div>
     <input id="galleryInput" type="file" accept="image/*">
     <input id="cameraInput" type="file" accept="image/*">
     <form id="messageForm" class="write-row">
