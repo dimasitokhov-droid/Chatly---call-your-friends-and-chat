@@ -203,7 +203,22 @@
       wrap.className="message"+(data.uid===currentUser.uid?" mine":"");
 
       const sender=document.createElement("div");
-      sender.className="sender";
+      sender.className="sender";const messageEffectEl = $("messageEffect");
+const messageExpiryEl = $("messageExpiry");
+const chatThemeEl = $("chatTheme");
+
+function getMessageOptions() {
+  const seconds = Number(messageExpiryEl.value);
+  const options = {
+    effect: messageEffectEl.value
+  };
+
+  if (seconds > 0) {
+    options.expiresAt = new Date(Date.now() + seconds * 1000);
+  }
+
+  return options;
+}
       sender.textContent=data.uid===currentUser.uid?"Вы":(targetUser?.username||"Собеседник");
       wrap.appendChild(sender);
 
