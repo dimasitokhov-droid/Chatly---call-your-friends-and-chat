@@ -44,3 +44,35 @@ input[type=file]{display:none}
 @keyframes messageIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(max-width:420px){header{padding:12px 10px;gap:9px}#callButton{padding:11px 12px;font-size:13px}.message{max-width:90%}#composer{padding:9px}#send{min-width:72px;padding:11px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+/* Chatly — новые функции */
+.chat-features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-bottom: 10px;
+}
+
+.chat-features label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted, #c9c4d5);
+  font-size: 12px;
+}
+
+.chat-features select {
+  width: 100%;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid var(--outline, #49454f);
+  border-radius: 14px;
+  background: var(--surface-high, #292a31);
+  color: var(--text, #e6e1e9);
+  font-size: 13px;
+}
+
+@media(max-width:360px) {
+  .chat-features {
+    grid-template-columns: 1fr;
+  }
+}
