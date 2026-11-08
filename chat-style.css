@@ -1,0 +1,46 @@
+/* Chatly chat — Google Pixel / Material 3 Expressive */
+:root{color-scheme:dark;--bg:#111318;--surface:#1e1f25;--surface-high:#292a31;--surface-low:#191a20;--primary:#d0bcff;--on-primary:#381e72;--secondary:#c9c4d5;--outline:#49454f;--text:#e6e1e9;--muted:#cac4d0;--radius:26px}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;min-height:100dvh;background:var(--bg);color:var(--text);font-family:Roboto,"Google Sans",Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+header{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:12px;padding:14px;background:var(--surface-low);border-bottom:1px solid #303039;backdrop-filter:blur(18px)}
+button{position:relative;isolation:isolate;overflow:hidden;border:0;border-radius:18px;padding:12px 16px;background:var(--primary);color:var(--on-primary);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;min-height:44px;touch-action:manipulation;transition:transform .32s cubic-bezier(.2,1.4,.4,1),filter .2s ease,box-shadow .25s ease,background .25s ease;box-shadow:0 2px 5px #00000020}
+button::after{content:"";position:absolute;z-index:0;left:var(--ripple-x,50%);top:var(--ripple-y,50%);width:12px;height:12px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(255,255,255,.5),rgba(255,255,255,.2) 48%,transparent 72%);transform:translate(-50%,-50%) scale(0);opacity:0}
+button:active::after,button.ripple-active::after{animation:pixelRipple .62s ease-out}
+button:active{transform:scale(.955);filter:brightness(.94);box-shadow:none}
+button:hover:not(:disabled){filter:brightness(1.07);transform:translateY(-1px)}
+button:focus-visible{outline:3px solid var(--secondary);outline-offset:3px}
+button:disabled{opacity:.5;cursor:wait;transform:none}
+#back,#muteCall,.tools button{background:var(--surface-high);color:var(--text);border:1px solid var(--outline);box-shadow:none}
+#username{font-weight:700;overflow-wrap:anywhere;color:var(--text)}
+#status{color:var(--muted);font-size:12px;margin-top:4px}
+#callPanel{display:none;margin:10px;padding:16px;background:var(--surface);border:1px solid #34353d;border-radius:var(--radius);box-shadow:0 3px 12px #00000018;animation:panelIn .35s ease both}
+#callPanel p{margin:0 0 12px;line-height:1.4}
+#callButtons{display:flex;gap:8px;flex-wrap:wrap}
+#callButtons button{flex:1;min-width:95px}
+#acceptCall{background:#65d6a0;color:#003824}
+#rejectCall,#hangupCall{background:#ffb4ab;color:#690005}
+#callHint{font-size:12px;color:var(--muted);margin-top:9px}
+#messages{min-height:calc(100dvh - 260px);padding:16px 12px;display:flex;flex-direction:column;gap:12px}
+.message{max-width:84%;padding:12px 14px;border-radius:20px 20px 20px 6px;background:var(--surface-high);overflow-wrap:anywhere;align-self:flex-start;border:1px solid #383942;animation:messageIn .28s cubic-bezier(.2,.8,.2,1) both}
+.message.mine{background:#493b68;border-color:#66528d;align-self:flex-end;border-radius:20px 20px 6px 20px}
+.sender{font-size:12px;font-weight:700;opacity:.8;margin-bottom:6px;color:var(--secondary)}
+.message-text{white-space:pre-wrap;line-height:1.45}
+.message img{display:block;max-width:100%;width:auto;max-height:360px;object-fit:contain;border-radius:14px}
+.time{margin-top:7px;text-align:right;font-size:11px;opacity:.7}
+#composer{position:sticky;bottom:0;background:var(--surface-low);border-top:1px solid #303039;padding:10px;z-index:2;backdrop-filter:blur(18px)}
+.tools{display:flex;gap:8px;margin-bottom:9px;flex-wrap:wrap}
+.tools button{flex:1;min-width:100px}
+.write-row{display:flex;gap:8px}
+#messageInput{min-width:0;flex:1;padding:13px 16px;border-radius:22px;border:1px solid var(--outline);outline:none;background:var(--surface-high);color:var(--text);font-size:16px;font-family:inherit;transition:border-color .2s,box-shadow .2s,background .2s}
+#messageInput:focus{border-color:var(--primary);box-shadow:0 0 0 3px #d0bcff22;background:#303039}
+#messageInput::placeholder{color:#aaa5b2}
+#send{min-width:76px;border-radius:22px}
+#notice{padding:8px 12px;color:#ffcc8a;font-size:13px;overflow-wrap:anywhere}
+.empty{margin:auto;text-align:center;color:var(--muted);padding:22px}
+input[type=file]{display:none}
+@keyframes pixelRipple{0%{transform:translate(-50%,-50%) scale(0);opacity:.78}65%{opacity:.34}100%{transform:translate(-50%,-50%) scale(19);opacity:0}}
+@keyframes panelIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes messageIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:420px){header{padding:12px 10px;gap:9px}#callButton{padding:11px 12px;font-size:13px}.message{max-width:90%}#composer{padding:9px}#send{min-width:72px;padding:11px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
