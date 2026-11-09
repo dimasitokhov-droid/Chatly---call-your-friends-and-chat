@@ -7,8 +7,8 @@
   <meta name="theme-color" content="#101522">
   <link rel="manifest" href="./manifest.webmanifest">
   <title>Chatly – чаты и сообщения</title>
-<link rel="stylesheet" href="./pixel-style.css">
-<style>
+  <link rel="stylesheet" href="./pixel-style.css">
+  <style>
     *{box-sizing:border-box}
     body{margin:0;min-height:100vh;background:#101522;color:#f5f7ff;font-family:Arial,sans-serif}
     header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 5%;background:#171f30;border-bottom:1px solid #303b55}
@@ -43,7 +43,12 @@
     .badgeControls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
     .badgeControls button{font-size:14px}
     hr{border-color:#303b55;margin:22px 0}
-    @media(max-width:420px){.panel{padding:15px}.entry{align-items:flex-start}.entry button{min-width:85px}.badgeControls{grid-template-columns:1fr}}
+    @media(max-width:420px){
+      .panel{padding:15px}
+      .entry{align-items:flex-start}
+      .entry button{min-width:85px}
+      .badgeControls{grid-template-columns:1fr}
+    }
   </style>
 </head>
 <body>
@@ -239,18 +244,45 @@ $("testNotificationBtn").addEventListener("click",async()=>{
 
 registerChatlyServiceWorker();
 
+/* ОБРАБОТКА ОШИБОК CHATLY */
 function errorText(error){
   console.error(error);
+
   const messages={
-    "auth/email-already-in-use":"Этот email уже используется.",
-    "auth/invalid-email":"Проверь правильность email.",
-    "auth/weak-password":"Пароль должен содержать минимум 6 символов.",
-    "auth/invalid-credential":"Неверный email или пароль.",
-    "auth/too-many-requests":"Слишком много попыток. Попробуй позже.",
-    "auth/network-request-failed":"Проверь подключение к интернету.",
-    "permission-denied":"Firebase отказал в доступе. Проверь Firestore Rules.",
-    "unavailable":"Firebase недоступен. Проверь интернет."
+    "auth/user-disabled":
+      "Упс! Похоже, произошла ошибка. Возможно, ваш аккаунт заблокирован, забанен или отключён. Пожалуйста, обратитесь к администратору Chatly.",
+
+    "auth/user-not-found":
+      "Упс! Похоже, произошла ошибка. Возможно, ваш аккаунт удалён или не существует. Пожалуйста, обратитесь к администратору Chatly.",
+
+    "auth/email-already-in-use":
+      "Этот email уже используется.",
+
+    "auth/invalid-email":
+      "Проверь правильность email.",
+
+    "auth/weak-password":
+      "Пароль должен содержать минимум 6 символов.",
+
+    "auth/invalid-credential":
+      "Неверный email или пароль.",
+
+    "auth/wrong-password":
+      "Неверный email или пароль.",
+
+    "auth/too-many-requests":
+      "Слишком много попыток. Попробуй позже.",
+
+    "auth/network-request-failed":
+      "Проверь подключение к интернету.",
+
+    "permission-denied":
+      "Firebase отказал в доступе. Проверь Firestore Rules.",
+
+    "unavailable":
+      "Firebase недоступен. Проверь интернет."
   };
+
   return messages[error?.code]||error?.message||"Произошла ошибка.";
 }
 
@@ -364,8 +396,11 @@ $("loginBtn").addEventListener("click",async()=>{
   try{
     await signInWithEmailAndPassword(auth,email,password);
     $("authStatus").textContent="";
-  }catch(e){$("authStatus").textContent=errorText(e)}
-  finally{$("loginBtn").disabled=false}
+  }catch(e){
+    $("authStatus").textContent=errorText(e);
+  }finally{
+    $("loginBtn").disabled=false;
+  }
 });
 
 $("registerBtn").addEventListener("click",async()=>{
@@ -397,7 +432,9 @@ $("registerBtn").addEventListener("click",async()=>{
     $("authStatus").textContent=e.message==="USERNAME_TAKEN"
       ?"Это имя уже занято. Выбери другое."
       :"Ошибка регистрации: "+errorText(e)+(createdUser?" Аккаунт мог создаться без профиля. Попробуй войти.":"");
-  }finally{$("registerBtn").disabled=false}
+  }finally{
+    $("registerBtn").disabled=false;
+  }
 });
 
 $("logoutBtn").addEventListener("click",async()=>{
@@ -438,8 +475,11 @@ $("verificationBtn").addEventListener("click",async()=>{
       status:"pending",createdAt:serverTimestamp()
     });
     $("verificationStatus").textContent="Заявка отправлена. Дождись решения администратора.";
-  }catch(e){$("verificationStatus").textContent=errorText(e)}
-  finally{btn.disabled=false}
+  }catch(e){
+    $("verificationStatus").textContent=errorText(e);
+  }finally{
+    btn.disabled=false;
+  }
 });
 
 async function loadRequests(){
@@ -480,7 +520,9 @@ async function loadRequests(){
       list.append(row);
     });
     $("adminStatus").textContent=count?"Заявок на рассмотрении: "+count:"Новых заявок нет.";
-  }catch(e){$("adminStatus").textContent="Не удалось загрузить заявки: "+errorText(e)}
+  }catch(e){
+    $("adminStatus").textContent="Не удалось загрузить заявки: "+errorText(e);
+  }
 }
 
 async function reviewRequest(uid,approved){
@@ -507,7 +549,9 @@ async function reviewRequest(uid,approved){
       const p=(await getDoc(profileRef)).data();
       renderMyName(p.username,p);
     }
-  }catch(e){$("adminStatus").textContent="Ошибка: "+errorText(e)}
+  }catch(e){
+    $("adminStatus").textContent="Ошибка: "+errorText(e);
+  }
 }
 $("refreshRequestsBtn").addEventListener("click",loadRequests);
 
@@ -525,12 +569,21 @@ async function setBadge(badge,enabled){
   status.textContent="Ищем пользователя…";
   try{
     const nameSnap=await getDoc(doc(db,"usernames",username));
-    if(!nameSnap.exists()){status.textContent="Пользователь не найден.";return}
+    if(!nameSnap.exists()){
+      status.textContent="Пользователь не найден.";
+      return;
+    }
     const uid=nameSnap.data().uid;
-    if(!uid){status.textContent="UID пользователя не найден.";return}
+    if(!uid){
+      status.textContent="UID пользователя не найден.";
+      return;
+    }
     const profileRef=doc(db,"users",uid);
     const profileSnap=await getDoc(profileRef);
-    if(!profileSnap.exists()){status.textContent="Профиль не найден.";return}
+    if(!profileSnap.exists()){
+      status.textContent="Профиль не найден.";
+      return;
+    }
     const profile=profileSnap.data();
     if(badge==="verified"){
       await updateDoc(profileRef,{verified:enabled});
@@ -559,7 +612,9 @@ async function setBadge(badge,enabled){
       renderMyName(updated.username||username,updated);
       $("verificationBtn").classList.toggle("hidden",updated.verified===true);
     }
-  }catch(e){status.textContent="Ошибка: "+errorText(e)}
+  }catch(e){
+    status.textContent="Ошибка: "+errorText(e);
+  }
 }
 
 const badgeButtons=[
@@ -582,19 +637,34 @@ async function searchUser(){
     return;
   }
   const current=auth.currentUser;
-  if(!current){$("searchStatus").textContent="Сначала войди в аккаунт.";return}
+  if(!current){
+    $("searchStatus").textContent="Сначала войди в аккаунт.";
+    return;
+  }
   $("searchBtn").disabled=true;
   $("searchStatus").textContent="Ищем пользователя…";
   try{
     const nameSnap=await getDoc(doc(db,"usernames",username));
     if(version!==searchVersion)return;
-    if(!nameSnap.exists()){$("searchStatus").textContent="Пользователь не найден.";return}
+    if(!nameSnap.exists()){
+      $("searchStatus").textContent="Пользователь не найден.";
+      return;
+    }
     const uid=nameSnap.data().uid;
-    if(!uid){$("searchStatus").textContent="У ника отсутствует профиль.";return}
-    if(uid===current.uid){$("searchStatus").textContent="Это твой собственный аккаунт.";return}
+    if(!uid){
+      $("searchStatus").textContent="У ника отсутствует профиль.";
+      return;
+    }
+    if(uid===current.uid){
+      $("searchStatus").textContent="Это твой собственный аккаунт.";
+      return;
+    }
     const profileSnap=await getDoc(doc(db,"users",uid));
     if(version!==searchVersion)return;
-    if(!profileSnap.exists()){$("searchStatus").textContent="Профиль не найден.";return}
+    if(!profileSnap.exists()){
+      $("searchStatus").textContent="Профиль не найден.";
+      return;
+    }
     const profile=profileSnap.data();
     addUserRow($("searchResult"),profile.username||username,uid,"Личная переписка без заявок в друзья",profile);
     saveRecent(profile.username||username,uid);
@@ -606,8 +676,12 @@ async function searchUser(){
   }
 }
 $("searchBtn").addEventListener("click",searchUser);
-$("searchUsername").addEventListener("keydown",e=>{if(e.key==="Enter")searchUser()});
-$("adminUsernameInput").addEventListener("keydown",e=>{if(e.key==="Enter")setBadge("verified",true)});
+$("searchUsername").addEventListener("keydown",e=>{
+  if(e.key==="Enter")searchUser();
+});
+$("adminUsernameInput").addEventListener("keydown",e=>{
+  if(e.key==="Enter")setBadge("verified",true);
+});
 
 onAuthStateChanged(auth,async user=>{
   const version=++authVersion;
@@ -658,7 +732,9 @@ onAuthStateChanged(auth,async user=>{
           rejected:"Заявка отклонена."
         };
         $("verificationStatus").textContent=labels[req.data().status]||"Статус заявки неизвестен.";
-      }else $("verificationStatus").textContent="У тебя пока нет заявки.";
+      }else{
+        $("verificationStatus").textContent="У тебя пока нет заявки.";
+      }
     }
     await renderRecent();
     if(version!==authVersion)return;
