@@ -68,7 +68,14 @@
     <button id="loginBtn">Войти по Email</button>
     <button id="registerBtn" class="secondary">Создать аккаунт</button>
     <div class="authDivider">ИЛИ</div>
-    <button id="googleLoginBtn" class="secondary">🌐 Войти через Google</button>
+   <h3>📱 Вход по номеру телефона</h3>
+<input id="phoneLoginInput" type="tel" placeholder="+371 20000000" autocomplete="tel">
+<div id="loginRecaptcha"></div>
+<button id="sendLoginCodeBtn" class="secondary">Отправить SMS-код</button>
+<input id="loginSmsCode" class="hidden" type="text" inputmode="numeric" placeholder="Код из SMS" maxlength="6" autocomplete="one-time-code">
+<button id="confirmLoginCodeBtn" class="hidden">Подтвердить код</button>
+<p id="phoneLoginStatus" class="status" role="status"></p>
+<button id="googleLoginBtn" class="secondary">🌐 Войти через Google</button>
       </section>
 
   <div id="appPanel" class="hidden">
