@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -27,6 +28,7 @@
     button:disabled{opacity:.6;cursor:wait}
     .secondary{background:#303b55}
     .danger{background:#a63d55}
+    .success{background:#287b62}
     .hidden{display:none!important}
     .muted{color:#aab5cd;font-size:13px;overflow-wrap:anywhere}
     .entry{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid #303b55}
@@ -44,7 +46,17 @@
     .badgeControls button{font-size:14px}
     hr{border-color:#303b55;margin:22px 0}
 
-    /* ОКНО ОШИБКИ АККАУНТА */
+    .banInfo{
+      padding:12px;
+      margin-top:12px;
+      border-radius:12px;
+      background:#30202a;
+      border:1px solid #704052;
+      color:#ffc8d2;
+      font-size:13px;
+      line-height:1.5;
+    }
+
     .modalOverlay{
       position:fixed;
       inset:0;
@@ -58,9 +70,7 @@
       -webkit-backdrop-filter:blur(8px);
     }
 
-    .modalOverlay.hidden{
-      display:none!important;
-    }
+    .modalOverlay.hidden{display:none!important}
 
     .errorModal{
       width:min(420px,100%);
@@ -73,14 +83,8 @@
     }
 
     @keyframes modalAppear{
-      from{
-        opacity:0;
-        transform:translateY(12px) scale(.97);
-      }
-      to{
-        opacity:1;
-        transform:translateY(0) scale(1);
-      }
+      from{opacity:0;transform:translateY(12px) scale(.97)}
+      to{opacity:1;transform:translateY(0) scale(1)}
     }
 
     .modalIcon{
@@ -121,9 +125,7 @@
       width:100%;
     }
 
-    body.modal-open{
-      overflow:hidden;
-    }
+    body.modal-open{overflow:hidden}
 
     @media(max-width:420px){
       .panel{padding:15px}
@@ -186,6 +188,7 @@
 
     <section id="adminPanel" class="panel hidden">
       <h2>🛡️ Панель администратора</h2>
+
       <h3>Управление бейджами</h3>
       <p>Введи ник пользователя без символа @, затем выбери действие.</p>
 
@@ -203,6 +206,23 @@
       </div>
 
       <p id="badgeAdminStatus" class="status" role="status"></p>
+
+      <hr>
+
+      <h3>🚫 Блокировка аккаунтов</h3>
+      <p>Введи ник пользователя в поле выше и выбери действие.</p>
+
+      <div class="badgeControls">
+        <button id="banUserBtn" class="danger">🚫 Заблокировать</button>
+        <button id="unbanUserBtn" class="success">🔓 Разблокировать</button>
+      </div>
+
+      <div class="banInfo">
+        При блокировке пользователь не сможет пользоваться чатами и звонками.
+        Разблокировка восстановит доступ.
+      </div>
+
+      <p id="banAdminStatus" class="status" role="status"></p>
 
       <hr>
 
@@ -231,7 +251,6 @@
   </div>
 </main>
 
-<!-- МОДАЛЬНОЕ ОКНО -->
 <div id="accountErrorModal"
      class="modalOverlay hidden"
      role="dialog"
@@ -241,14 +260,9 @@
 
   <section class="errorModal">
     <div class="modalIcon" aria-hidden="true">!</div>
-
     <h2 id="accountErrorTitle">Упс! Произошла ошибка</h2>
-
     <p id="accountErrorMessage"></p>
-
-    <button id="closeAccountError" class="modalButton">
-      Понятно
-    </button>
+    <button id="closeAccountError" class="modalButton">Понятно</button>
   </section>
 </div>
 
@@ -317,21 +331,16 @@ function closeAccountError(){
 $("closeAccountError").addEventListener("click",closeAccountError);
 
 $("accountErrorModal").addEventListener("click",event=>{
-  if(event.target===$("accountErrorModal")){
-    closeAccountError();
-  }
+  if(event.target===$("accountErrorModal"))closeAccountError();
 });
 
 document.addEventListener("keydown",event=>{
-  if(
-    event.key==="Escape" &&
-    !$("accountErrorModal").classList.contains("hidden")
-  ){
+  if(event.key==="Escape"&&!$("accountErrorModal").classList.contains("hidden")){
     closeAccountError();
   }
 });
 
-/* CHATLY GUARD: регистрация Service Worker */
+/* CHATLY GUARD */
 
 async function registerChatlyServiceWorker(){
 
@@ -343,16 +352,11 @@ async function registerChatlyServiceWorker(){
   try{
     chatlyServiceWorker=await navigator.serviceWorker.register("./sw.js");
     chatlyServiceWorker=await navigator.serviceWorker.ready;
-
     updateNotificationStatus();
-
     return chatlyServiceWorker;
-
   }catch(error){
     console.error("Service Worker:",error);
-
     $("notificationStatus").textContent="Не удалось подключить sw.js. Проверь, что файл есть в корне сайта.";
-
     return null;
   }
 }
@@ -361,10 +365,7 @@ function updateNotificationStatus(){
 
   if(!("Notification" in window)){
     $("notificationStatus").textContent="Этот браузер не поддерживает уведомления.";
-    return;
-  }
-
-  if(Notification.permission==="granted"){
+  }else if(Notification.permission==="granted"){
     $("notificationStatus").textContent="✅ Уведомления разрешены.";
   }else if(Notification.permission==="denied"){
     $("notificationStatus").textContent="Уведомления заблокированы. Измени разрешение в настройках сайта браузера.";
@@ -382,18 +383,14 @@ $("enableNotificationsBtn").addEventListener("click",async()=>{
 
   try{
     const permission=await Notification.requestPermission();
-
     updateNotificationStatus();
 
     if(permission==="granted"){
       await registerChatlyServiceWorker();
-
       $("notificationStatus").textContent="✅ Уведомления разрешены! Теперь нажми «Проверить уведомление».";
     }
-
   }catch(error){
     console.error(error);
-
     $("notificationStatus").textContent="Не удалось запросить разрешение на уведомления.";
   }
 });
@@ -414,7 +411,6 @@ $("testNotificationBtn").addEventListener("click",async()=>{
 
   try{
     const registration=chatlyServiceWorker||await registerChatlyServiceWorker();
-
     if(!registration)throw new Error("Service Worker не подключён.");
 
     await registration.showNotification("Chatly 💬",{
@@ -424,12 +420,9 @@ $("testNotificationBtn").addEventListener("click",async()=>{
     });
 
     $("notificationStatus").textContent="✅ Тестовое уведомление отправлено!";
-
   }catch(error){
     console.error(error);
-
     $("notificationStatus").textContent="Не удалось отправить уведомление: "+(error.message||"ошибка");
-
   }finally{
     $("testNotificationBtn").disabled=false;
   }
@@ -437,69 +430,39 @@ $("testNotificationBtn").addEventListener("click",async()=>{
 
 registerChatlyServiceWorker();
 
-/* ОБРАБОТКА ОШИБОК CHATLY */
+/* ОБРАБОТКА ОШИБОК */
 
 function errorText(error){
 
   console.error(error);
 
   const messages={
-
-    "auth/user-disabled":
-      "Упс! Похоже, произошла ошибка. Возможно, ваш аккаунт заблокирован, забанен или отключён. Пожалуйста, обратитесь к администратору Chatly.",
-
-    "auth/user-not-found":
-      "Упс! Похоже, произошла ошибка. Возможно, ваш аккаунт удалён или не существует. Пожалуйста, обратитесь к администратору Chatly.",
-
-    "auth/email-already-in-use":
-      "Этот email уже используется.",
-
-    "auth/invalid-email":
-      "Проверь правильность email.",
-
-    "auth/weak-password":
-      "Пароль должен содержать минимум 6 символов.",
-
-    "auth/invalid-credential":
-      "Неверный email или пароль.",
-
-    "auth/wrong-password":
-      "Неверный email или пароль.",
-
-    "auth/too-many-requests":
-      "Слишком много попыток. Попробуй позже.",
-
-    "auth/network-request-failed":
-      "Проверь подключение к интернету.",
-
-    "permission-denied":
-      "Firebase отказал в доступе. Проверь Firestore Rules.",
-
-    "unavailable":
-      "Firebase недоступен. Проверь интернет."
+    "auth/user-disabled":"Упс! Возможно, ваш аккаунт заблокирован или отключён. Обратитесь к администратору Chatly.",
+    "auth/user-not-found":"Возможно, ваш аккаунт удалён или не существует. Обратитесь к администратору Chatly.",
+    "auth/email-already-in-use":"Этот email уже используется.",
+    "auth/invalid-email":"Проверь правильность email.",
+    "auth/weak-password":"Пароль должен содержать минимум 6 символов.",
+    "auth/invalid-credential":"Неверный email или пароль.",
+    "auth/wrong-password":"Неверный email или пароль.",
+    "auth/too-many-requests":"Слишком много попыток. Попробуй позже.",
+    "auth/network-request-failed":"Проверь подключение к интернету.",
+    "permission-denied":"Firebase отказал в доступе. Проверь Firestore Rules.",
+    "unavailable":"Firebase недоступен. Проверь интернет."
   };
 
   return messages[error?.code]||error?.message||"Произошла ошибка.";
 }
 
-/* ПОКАЗ ОКНА ТОЛЬКО ДЛЯ НУЖНЫХ ОШИБОК ВХОДА */
-
 function handleLoginError(error){
 
   if(error?.code==="auth/user-disabled"){
-    showAccountError(
-      "Упс! Похоже, произошла ошибка. Возможно, ваш аккаунт заблокирован, забанен или отключён. Пожалуйста, обратитесь к администратору Chatly."
-    );
-
+    showAccountError("Упс! Возможно, ваш аккаунт заблокирован, забанен или отключён. Обратитесь к администратору Chatly.");
     $("authStatus").textContent="";
     return;
   }
 
   if(error?.code==="auth/user-not-found"){
-    showAccountError(
-      "Упс! Похоже, произошла ошибка. Возможно, ваш аккаунт удалён или не существует. Пожалуйста, обратитесь к администратору Chatly."
-    );
-
+    showAccountError("Возможно, ваш аккаунт удалён или не существует. Обратитесь к администратору Chatly.");
     $("authStatus").textContent="";
     return;
   }
@@ -518,11 +481,9 @@ function addBadges(parent,profile={}){
 
   if(profile.verified===true){
     const b=document.createElement("span");
-
     b.className="badge verified";
     b.textContent="✓";
     b.title="Подтверждённый профиль Chatly";
-
     badges.append(b);
   }
 
@@ -535,16 +496,12 @@ function addBadges(parent,profile={}){
   ];
 
   for(const [id,icon,label] of definitions){
-
     if(!values.includes(id))continue;
-
     const b=document.createElement("span");
-
     b.className="badge "+id;
     b.textContent=icon;
     b.title=label;
     b.setAttribute("aria-label",label);
-
     badges.append(b);
   }
 
@@ -554,11 +511,7 @@ function addBadges(parent,profile={}){
 function renderMyName(username,profile={}){
 
   const target=$("myUsername");
-
-  target.replaceChildren(
-    document.createTextNode(username||"пользователь")
-  );
-
+  target.replaceChildren(document.createTextNode(username||"пользователь"));
   addBadges(target,profile);
 }
 
@@ -571,9 +524,7 @@ function addUserRow(container,username,uid,subtitle,profile={}){
   info.className="entryInfo";
 
   const name=document.createElement("strong");
-
   name.append(document.createTextNode("@"+username));
-
   addBadges(name,profile);
 
   const detail=document.createElement("div");
@@ -595,7 +546,6 @@ function addUserRow(container,username,uid,subtitle,profile={}){
 }
 
 function storageKey(){
-
   return auth.currentUser
     ?"chatly_recent_usernames_"+auth.currentUser.uid
     :null;
@@ -614,24 +564,19 @@ function getRecent(){
 function saveRecent(username,uid){
 
   const key=storageKey();
-
   if(!key)return;
 
   const list=getRecent().filter(x=>x.uid!==uid);
-
   list.unshift({username,uid});
 
   localStorage.setItem(key,JSON.stringify(list.slice(0,20)));
-
   renderRecent();
 }
 
 async function renderRecent(){
 
   const version=++recentVersion;
-
   const list=$("recentUsersList");
-
   list.replaceChildren();
 
   const recent=getRecent();
@@ -649,30 +594,14 @@ async function renderRecent(){
 
     try{
       const snap=await getDoc(doc(db,"users",item.uid));
-
       if(version!==recentVersion)return;
 
       const p=snap.exists()?snap.data():{};
 
-      addUserRow(
-        list,
-        p.username||item.username,
-        item.uid,
-        "Недавно искал",
-        p
-      );
-
+      addUserRow(list,p.username||item.username,item.uid,"Недавно искал",p);
     }catch{
-
       if(version!==recentVersion)return;
-
-      addUserRow(
-        list,
-        item.username,
-        item.uid,
-        "Недавно искал",
-        {}
-      );
+      addUserRow(list,item.username,item.uid,"Недавно искал",{});
     }
   }
 
@@ -682,11 +611,8 @@ async function renderRecent(){
 }
 
 $("clearRecentBtn").addEventListener("click",()=>{
-
   const key=storageKey();
-
   if(key)localStorage.removeItem(key);
-
   renderRecent();
 });
 
@@ -706,17 +632,11 @@ $("loginBtn").addEventListener("click",async()=>{
   $("authStatus").textContent="Входим…";
 
   try{
-
     await signInWithEmailAndPassword(auth,email,password);
-
     $("authStatus").textContent="";
-
   }catch(e){
-
     handleLoginError(e);
-
   }finally{
-
     $("loginBtn").disabled=false;
   }
 });
@@ -726,7 +646,6 @@ $("loginBtn").addEventListener("click",async()=>{
 $("registerBtn").addEventListener("click",async()=>{
 
   const username=normalizeUsername($("username").value);
-
   const email=$("email").value.trim();
   const password=$("password").value;
 
@@ -746,17 +665,12 @@ $("registerBtn").addEventListener("click",async()=>{
   }
 
   $("registerBtn").disabled=true;
-
   let createdUser=null;
 
   try{
-
     $("authStatus").textContent="Создаём аккаунт…";
 
-    const credential=await createUserWithEmailAndPassword(
-      auth,email,password
-    );
-
+    const credential=await createUserWithEmailAndPassword(auth,email,password);
     createdUser=credential.user;
 
     const nameRef=doc(db,"usernames",username);
@@ -765,7 +679,6 @@ $("registerBtn").addEventListener("click",async()=>{
     await runTransaction(db,async tx=>{
 
       const existing=await tx.get(nameRef);
-
       if(existing.exists())throw new Error("USERNAME_TAKEN");
 
       tx.set(nameRef,{uid:createdUser.uid});
@@ -779,18 +692,14 @@ $("registerBtn").addEventListener("click",async()=>{
     });
 
     await updateProfile(createdUser,{displayName:username});
-
     $("authStatus").textContent="Аккаунт создан!";
 
   }catch(e){
-
     $("authStatus").textContent=e.message==="USERNAME_TAKEN"
       ?"Это имя уже занято. Выбери другое."
       :"Ошибка регистрации: "+errorText(e)+
        (createdUser?" Аккаунт мог создаться без профиля. Попробуй войти.":"");
-
   }finally{
-
     $("registerBtn").disabled=false;
   }
 });
@@ -798,7 +707,6 @@ $("registerBtn").addEventListener("click",async()=>{
 /* ВЫХОД */
 
 $("logoutBtn").addEventListener("click",async()=>{
-
   try{
     await signOut(auth);
   }catch(e){
@@ -811,17 +719,13 @@ $("logoutBtn").addEventListener("click",async()=>{
 $("verificationBtn").addEventListener("click",async()=>{
 
   const user=auth.currentUser;
-
   if(!user)return;
 
   const btn=$("verificationBtn");
-
   btn.disabled=true;
-
   $("verificationStatus").textContent="Отправляем заявку…";
 
   try{
-
     const profileRef=doc(db,"users",user.uid);
     const requestRef=doc(db,"verificationRequests",user.uid);
 
@@ -842,7 +746,6 @@ $("verificationBtn").addEventListener("click",async()=>{
     const requestSnap=await getDoc(requestRef);
 
     if(requestSnap.exists()){
-
       const labels={
         pending:"Твоя заявка уже ожидает рассмотрения.",
         approved:"Заявка одобрена ранее, но галочка сейчас снята.",
@@ -851,7 +754,6 @@ $("verificationBtn").addEventListener("click",async()=>{
 
       $("verificationStatus").textContent=
         labels[requestSnap.data().status]||"Заявка уже существует.";
-
       return;
     }
 
@@ -865,11 +767,8 @@ $("verificationBtn").addEventListener("click",async()=>{
     $("verificationStatus").textContent="Заявка отправлена. Дождись решения администратора.";
 
   }catch(e){
-
     $("verificationStatus").textContent=errorText(e);
-
   }finally{
-
     btn.disabled=false;
   }
 });
@@ -881,23 +780,17 @@ async function loadRequests(){
   if(auth.currentUser?.uid!==ADMIN_UID)return;
 
   const list=$("verificationRequests");
-
   list.replaceChildren();
-
   $("adminStatus").textContent="Загружаем заявки…";
 
   try{
-
     const snap=await getDocs(collection(db,"verificationRequests"));
-
     let count=0;
 
     snap.forEach(s=>{
 
       const r=s.data();
-
       if(r.status!=="pending")return;
-
       count++;
 
       const row=document.createElement("div");
@@ -916,7 +809,6 @@ async function loadRequests(){
       info.append(name,detail);
 
       const actions=document.createElement("div");
-
       actions.style.display="flex";
       actions.style.flexDirection="column";
       actions.style.gap="6px";
@@ -931,9 +823,7 @@ async function loadRequests(){
       reject.addEventListener("click",()=>reviewRequest(s.id,false));
 
       actions.append(approve,reject);
-
       row.append(info,actions);
-
       list.append(row);
     });
 
@@ -942,7 +832,6 @@ async function loadRequests(){
       :"Новых заявок нет.";
 
   }catch(e){
-
     $("adminStatus").textContent="Не удалось загрузить заявки: "+errorText(e);
   }
 }
@@ -952,7 +841,6 @@ async function reviewRequest(uid,approved){
   if(auth.currentUser?.uid!==ADMIN_UID)return;
 
   try{
-
     const reqRef=doc(db,"verificationRequests",uid);
     const profileRef=doc(db,"users",uid);
 
@@ -985,14 +873,11 @@ async function reviewRequest(uid,approved){
     await loadRequests();
 
     if(auth.currentUser.uid===uid){
-
       const p=(await getDoc(profileRef)).data();
-
       renderMyName(p.username,p);
     }
 
   }catch(e){
-
     $("adminStatus").textContent="Ошибка: "+errorText(e);
   }
 }
@@ -1020,7 +905,6 @@ async function setBadge(badge,enabled){
   status.textContent="Ищем пользователя…";
 
   try{
-
     const nameSnap=await getDoc(doc(db,"usernames",username));
 
     if(!nameSnap.exists()){
@@ -1036,7 +920,6 @@ async function setBadge(badge,enabled){
     }
 
     const profileRef=doc(db,"users",uid);
-
     const profileSnap=await getDoc(profileRef);
 
     if(!profileSnap.exists()){
@@ -1047,13 +930,9 @@ async function setBadge(badge,enabled){
     const profile=profileSnap.data();
 
     if(badge==="verified"){
-
       await updateDoc(profileRef,{verified:enabled});
-
     }else{
-
       const badges=Array.isArray(profile.badges)?profile.badges:[];
-
       const next=enabled
         ?[...new Set([...badges,badge])]
         :badges.filter(x=>x!==badge);
@@ -1076,13 +955,9 @@ async function setBadge(badge,enabled){
       const updated={...profile};
 
       if(badge==="verified"){
-
         updated.verified=enabled;
-
       }else{
-
         const old=Array.isArray(profile.badges)?profile.badges:[];
-
         updated.badges=enabled
           ?[...new Set([...old,badge])]
           :old.filter(x=>x!==badge);
@@ -1090,14 +965,10 @@ async function setBadge(badge,enabled){
 
       renderMyName(updated.username||username,updated);
 
-      $("verificationBtn").classList.toggle(
-        "hidden",
-        updated.verified===true
-      );
+      $("verificationBtn").classList.toggle("hidden",updated.verified===true);
     }
 
   }catch(e){
-
     status.textContent="Ошибка: "+errorText(e);
   }
 }
@@ -1114,16 +985,104 @@ const badgeButtons=[
 ];
 
 for(const [id,badge,enabled] of badgeButtons){
-
   $(id).addEventListener("click",()=>setBadge(badge,enabled));
 }
+
+/* НОВОЕ: БЛОКИРОВКА И РАЗБЛОКИРОВКА */
+
+async function setUserBan(enabled){
+
+  const status=$("banAdminStatus");
+  const banButton=$("banUserBtn");
+  const unbanButton=$("unbanUserBtn");
+
+  if(auth.currentUser?.uid!==ADMIN_UID){
+    status.textContent="⛔ Нет прав администратора.";
+    return;
+  }
+
+  const username=normalizeUsername($("adminUsernameInput").value);
+
+  if(!/^[a-z0-9_]{3,20}$/.test(username)){
+    status.textContent="Сначала введи корректный ник в поле выше.";
+    return;
+  }
+
+  banButton.disabled=true;
+  unbanButton.disabled=true;
+
+  status.textContent="Ищем аккаунт…";
+
+  try{
+
+    const nameSnap=await getDoc(doc(db,"usernames",username));
+
+    if(!nameSnap.exists()){
+      status.textContent="Пользователь с таким ником не найден.";
+      return;
+    }
+
+    const uid=nameSnap.data().uid;
+
+    if(!uid){
+      status.textContent="UID пользователя не найден.";
+      return;
+    }
+
+    if(uid===ADMIN_UID){
+      status.textContent="Нельзя заблокировать или разблокировать аккаунт администратора.";
+      return;
+    }
+
+    const profileRef=doc(db,"users",uid);
+    const profileSnap=await getDoc(profileRef);
+
+    if(!profileSnap.exists()){
+      status.textContent="Профиль пользователя не найден.";
+      return;
+    }
+
+    const profile=profileSnap.data();
+    const currentlyBanned=profile.banned===true;
+
+    if(currentlyBanned===enabled){
+      status.textContent=enabled
+        ?"Этот аккаунт уже заблокирован."
+        :"Этот аккаунт уже разблокирован.";
+      return;
+    }
+
+    await updateDoc(profileRef,{
+      banned:enabled,
+      bannedAt:serverTimestamp(),
+      bannedBy:ADMIN_UID
+    });
+
+    status.textContent=enabled
+      ?"🚫 Аккаунт @"+(profile.username||username)+" заблокирован."
+      :"🔓 Аккаунт @"+(profile.username||username)+" разблокирован.";
+
+  }catch(error){
+
+    console.error("Ban error:",error);
+
+    status.textContent="Не удалось изменить статус аккаунта: "+errorText(error);
+
+  }finally{
+
+    banButton.disabled=false;
+    unbanButton.disabled=false;
+  }
+}
+
+$("banUserBtn").addEventListener("click",()=>setUserBan(true));
+$("unbanUserBtn").addEventListener("click",()=>setUserBan(false));
 
 /* ПОИСК ПОЛЬЗОВАТЕЛЕЙ */
 
 async function searchUser(){
 
   const version=++searchVersion;
-
   const username=normalizeUsername($("searchUsername").value);
 
   $("searchResult").replaceChildren();
@@ -1142,7 +1101,6 @@ async function searchUser(){
   }
 
   $("searchBtn").disabled=true;
-
   $("searchStatus").textContent="Ищем пользователя…";
 
   try{
@@ -1183,12 +1141,13 @@ async function searchUser(){
       $("searchResult"),
       profile.username||username,
       uid,
-      "Личная переписка без заявок в друзья",
+      profile.banned===true
+        ?"⛔ Аккаунт заблокирован"
+        :"Личная переписка без заявок в друзья",
       profile
     );
 
     saveRecent(profile.username||username,uid);
-
     $("searchStatus").textContent="";
 
   }catch(e){
@@ -1240,22 +1199,17 @@ onAuthStateChanged(auth,async user=>{
   if(!user){
 
     renderMyName("",{});
-
     $("recentUsersStatus").textContent="Войди, чтобы увидеть историю поиска.";
-
     $("verificationStatus").textContent="";
-
     $("verificationBtn").classList.remove("hidden");
 
     return;
   }
 
   updateNotificationStatus();
-
   renderMyName(user.displayName||"пользователь",{});
 
   $("recentUsersStatus").textContent="Загружаем историю…";
-
   $("verificationStatus").textContent="Проверяем статус…";
 
   try{
@@ -1267,14 +1221,12 @@ onAuthStateChanged(auth,async user=>{
     if(!profileSnap.exists()){
 
       $("recentUsersStatus").textContent="Профиль не найден. Поиск может быть недоступен.";
-
       $("verificationStatus").textContent="Профиль не найден.";
 
       return;
     }
 
     const profile=profileSnap.data();
-
     const username=profile.username||user.displayName||"пользователь";
 
     renderMyName(username,profile);
@@ -1282,16 +1234,13 @@ onAuthStateChanged(auth,async user=>{
     if(profile.verified===true){
 
       $("verificationStatus").textContent="Твой профиль подтверждён синей галочкой!";
-
       $("verificationBtn").classList.add("hidden");
 
     }else{
 
       $("verificationBtn").classList.remove("hidden");
 
-      const req=await getDoc(
-        doc(db,"verificationRequests",user.uid)
-      );
+      const req=await getDoc(doc(db,"verificationRequests",user.uid));
 
       if(version!==authVersion)return;
 
@@ -1325,7 +1274,6 @@ onAuthStateChanged(auth,async user=>{
     if(version!==authVersion)return;
 
     $("recentUsersStatus").textContent="Не удалось загрузить профиль: "+errorText(e);
-
     $("verificationStatus").textContent=errorText(e);
   }
 });
