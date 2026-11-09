@@ -490,7 +490,14 @@ $("sendLinkCodeBtn").addEventListener("click",async()=>{
     linkConfirmation=await linkWithPhoneNumber(user,phone,linkVerifier);
     $("linkSmsCode").classList.remove("hidden");$("confirmLinkCodeBtn").classList.remove("hidden");
     $("linkStatus").textContent="SMS отправлено. Введи код для привязки номера.";
-  }catch(e){$("linkStatus").textContent=errorText(e);if(linkVerifier){try{linkVerifier.clear();}catch{}linkVerifier=null;}}
+  }catch(e){
+    console.error("Phone link error:",e);
+    $("linkStatus").textContent=(e.code||"Без кода")+": "+errorText(e);
+    if(linkVerifier){
+      try{linkVerifier.clear();}catch{}
+      linkVerifier=null;
+    }
+  }
   finally{btn.disabled=false;}
 });
 $("confirmLinkCodeBtn").addEventListener("click",async()=>{
