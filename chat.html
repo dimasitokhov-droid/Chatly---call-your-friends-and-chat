@@ -4,16 +4,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111318">
   <title>Chatly — Чат</title>
   <style>
     *{box-sizing:border-box}
     body{margin:0;background:#10111a;color:#f7f7fb;font-family:Arial,sans-serif}
     header{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:12px;padding:14px;background:#191a27;border-bottom:1px solid #303144}
     button{border:0;border-radius:12px;padding:12px;background:#7657ed;color:white;font-size:14px;cursor:pointer}
-    button:disabled{opacity:.5;cursor:wait}
+    button:disabled{opacity:.5;cursor:not-allowed}
     #back{background:#303144}
     #username{font-weight:bold;overflow-wrap:anywhere}
     #status{color:#b9b8ca;font-size:12px;margin-top:4px}
+    #status.blocked{color:#ff8a9a;font-weight:bold}
     #messages{min-height:calc(100dvh - 260px);padding:16px 12px;display:flex;flex-direction:column;gap:12px}
     .message{max-width:84%;padding:11px 13px;border-radius:16px;background:#252638;overflow-wrap:anywhere;align-self:flex-start}
     .message.mine{background:#6548d9;align-self:flex-end}
@@ -28,6 +30,7 @@
     #messageInput{min-width:0;flex:1;padding:12px;border-radius:12px;border:1px solid #414258;outline:none;background:#10111a;color:white;font-size:16px}
     #send{min-width:76px}
     #notice{padding:8px 12px;color:#ffcc8a;font-size:13px;overflow-wrap:anywhere}
+    #notice.blocked{color:#ff8a9a;font-weight:bold}
     .empty{margin:auto;text-align:center;color:#aaa9bd}
     input[type=file]{display:none}
     #callPanel{display:none;margin:10px;padding:12px;background:#202133;border:1px solid #414258;border-radius:16px}
@@ -39,9 +42,7 @@
     #muteCall{background:#414258}
     #callHint{font-size:12px;color:#c6c4dc;margin-top:9px}
   </style>
-
-<link rel="stylesheet" href="./chat-style.css">
-
+  <link rel="stylesheet" href="./chat-style.css">
 </head>
 <body>
   <header>
@@ -69,47 +70,49 @@
   <div id="notice" role="status"></div>
 
   <section id="composer">
-<div class="tools">
-  <button id="gallery" type="button">🖼️ Галерея</button>
-  <button id="camera" type="button">📷 Камера</button>
-</div>
+    <div class="tools">
+      <button id="gallery" type="button">🖼️ Галерея</button>
+      <button id="camera" type="button">📷 Камера</button>
+    </div>
 
-<div class="chat-features">
-  <label>
-    ✨ Эффект
-    <select id="messageEffect">
-      <option value="none">Обычный</option>
-      <option value="hologram">Голограмма</option>
-      <option value="glow">Свечение</option>
-      <option value="sparkle">Искры</option>
-      <option value="neon">Неон</option>
-    </select>
-  </label>
+    <div class="chat-features">
+      <label>
+        ✨ Эффект
+        <select id="messageEffect">
+          <option value="none">Обычный</option>
+          <option value="hologram">Голограмма</option>
+          <option value="glow">Свечение</option>
+          <option value="sparkle">Искры</option>
+          <option value="neon">Неон</option>
+        </select>
+      </label>
 
-  <label>
-    ⏳ Таймер
-    <select id="messageExpiry">
-      <option value="0">Без таймера</option>
-      <option value="60">1 минута</option>
-      <option value="3600">1 час</option>
-      <option value="86400">24 часа</option>
-    </select>
-  </label>
+      <label>
+        ⏳ Таймер
+        <select id="messageExpiry">
+          <option value="0">Без таймера</option>
+          <option value="60">1 минута</option>
+          <option value="3600">1 час</option>
+          <option value="86400">24 часа</option>
+        </select>
+      </label>
 
-  <label>
-    🌈 Тема
-    <select id="chatTheme">
-      <option value="pixel">Pixel</option>
-      <option value="aurora">Северное сияние</option>
-      <option value="midnight">Полночь</option>
-      <option value="sunset">Закат</option>
-      <option value="ocean">Океан</option>
-      <option value="neon">Неон</option>
-    </select>
-  </label>
-</div>
+      <label>
+        🌈 Тема
+        <select id="chatTheme">
+          <option value="pixel">Pixel</option>
+          <option value="aurora">Северное сияние</option>
+          <option value="midnight">Полночь</option>
+          <option value="sunset">Закат</option>
+          <option value="ocean">Океан</option>
+          <option value="neon">Неон</option>
+        </select>
+      </label>
+    </div>
+
     <input id="galleryInput" type="file" accept="image/*">
     <input id="cameraInput" type="file" accept="image/*">
+
     <form id="messageForm" class="write-row">
       <input id="messageInput" type="text" maxlength="5000" placeholder="Напишите сообщение…" autocomplete="off">
       <button id="send" type="submit">Отправить</button>
@@ -118,13 +121,32 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
     import {
-      getFirestore, doc, getDoc, runTransaction, collection, addDoc,
-      query, orderBy, onSnapshot, serverTimestamp, updateDoc, where
+      getAuth,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      runTransaction,
+      collection,
+      addDoc,
+      query,
+      orderBy,
+      onSnapshot,
+      serverTimestamp,
+      updateDoc,
+      where
     } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
     import {
-      getStorage, ref, uploadBytes, getDownloadURL
+      getStorage,
+      ref,
+      uploadBytes,
+      getDownloadURL
     } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
 
     const firebaseConfig = {
@@ -141,501 +163,816 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
     const storage = getStorage(app);
+
     const $ = id => document.getElementById(id);
 
-    const usernameEl=$("username"), statusEl=$("status"), messagesEl=$("messages");
-    const noticeEl=$("notice"), inputEl=$("messageInput"), sendBtn=$("send");
-    const galleryBtn=$("gallery"), cameraBtn=$("camera");
-    const galleryInput=$("galleryInput"), cameraInput=$("cameraInput");
-    const callButton=$("callButton"), callPanel=$("callPanel");
-    const callTitle=$("callTitle"), callHint=$("callHint");
-    const acceptCallBtn=$("acceptCall"), rejectCallBtn=$("rejectCall");
-    const muteCallBtn=$("muteCall"), hangupCallBtn=$("hangupCall");
-    const remoteAudio=$("remoteAudio");
+    const usernameEl = $("username");
+    const statusEl = $("status");
+    const messagesEl = $("messages");
+    const noticeEl = $("notice");
+    const inputEl = $("messageInput");
+    const sendBtn = $("send");
+
+    const galleryBtn = $("gallery");
+    const cameraBtn = $("camera");
+    const galleryInput = $("galleryInput");
+    const cameraInput = $("cameraInput");
+
+    const callButton = $("callButton");
+    const callPanel = $("callPanel");
+    const callTitle = $("callTitle");
+    const callHint = $("callHint");
+
+    const acceptCallBtn = $("acceptCall");
+    const rejectCallBtn = $("rejectCall");
+    const muteCallBtn = $("muteCall");
+    const hangupCallBtn = $("hangupCall");
+
+    const remoteAudio = $("remoteAudio");
+
+    const messageEffectEl = $("messageEffect");
+    const messageExpiryEl = $("messageExpiry");
+    const chatThemeEl = $("chatTheme");
 
     const targetUid = new URLSearchParams(location.search).get("uid");
 
-    let currentUser=null, targetUser=null, chatId=null;
-    let stopMessages=null, stopIncomingCalls=null;
-    let busy=false, activeCallId=null, peer=null, localStream=null;
-    let stopCallDoc=null, stopCandidates=null;
-    let handlingIncoming=false, muted=false;
-    let queuedRemoteCandidates=[];
+    let currentUser = null;
+    let targetUser = null;
+    let chatId = null;
 
-    function notice(message){
-      noticeEl.textContent=message||"";
+    let stopMessages = null;
+    let stopIncomingCalls = null;
+    let stopCallDoc = null;
+    let stopCandidates = null;
+
+    let stopOwnProfile = null;
+    let stopTargetProfile = null;
+
+    let busy = false;
+    let activeCallId = null;
+    let peer = null;
+    let localStream = null;
+
+    let handlingIncoming = false;
+    let muted = false;
+    let queuedRemoteCandidates = [];
+
+    // Состояние блокировки
+    let ownBanned = false;
+    let targetBanned = false;
+    let accessBlocked = false;
+    let chatStarted = false;
+
+    function notice(message, blocked = false) {
+      noticeEl.textContent = message || "";
+      noticeEl.classList.toggle("blocked", blocked);
     }
 
-    function explainError(error){
-      console.error("Chatly error:",error);
-      const code=error?.code||"";
-      const messages={
-        "permission-denied":"Firebase отказал в доступе. Проверьте Firestore Rules и Storage Rules.",
-        "storage/unauthorized":"Нет доступа к фотографиям. Проверьте Storage Rules.",
-        "storage/bucket-not-found":"Хранилище не найдено. Проверьте Storage в Firebase Console.",
-        "storage/unknown":"Ошибка загрузки фотографии. Проверьте интернет и настройки Storage.",
-        "auth/network-request-failed":"Нет подключения к интернету.",
-        "not-found":"Профиль или документ чата не найден.",
-        "unavailable":"Firebase временно недоступен. Попробуйте ещё раз."
+    function explainError(error) {
+      console.error("Chatly error:", error);
+
+      const code = error?.code || "";
+
+      const messages = {
+        "permission-denied":
+          "Firebase отказал в доступе. Возможно, аккаунт заблокирован или проверьте Firestore Rules.",
+        "storage/unauthorized":
+          "Нет доступа к фотографиям. Проверьте Storage Rules.",
+        "storage/bucket-not-found":
+          "Хранилище не найдено. Проверьте Storage в Firebase Console.",
+        "storage/unknown":
+          "Ошибка загрузки фотографии. Проверьте интернет и настройки Storage.",
+        "auth/network-request-failed":
+          "Нет подключения к интернету.",
+        "not-found":
+          "Профиль или документ чата не найден.",
+        "unavailable":
+          "Firebase временно недоступен. Попробуйте ещё раз."
       };
-      notice(messages[code]||("Ошибка: "+code+". "+(error?.message||"Не удалось выполнить действие.")));
+
+      notice(
+        messages[code] ||
+        ("Ошибка: " + code + ". " +
+        (error?.message || "Не удалось выполнить действие."))
+      );
     }
 
-    $("back").addEventListener("click",()=>location.href="index.html");
+    $("back").addEventListener("click", () => {
+      location.href = "index.html";
+    });
 
-    function showEmpty(message){
+    function showEmpty(message) {
       messagesEl.replaceChildren();
-      const div=document.createElement("div");
-      div.className="empty";
-      div.textContent=message;
+
+      const div = document.createElement("div");
+      div.className = "empty";
+      div.textContent = message;
+
       messagesEl.appendChild(div);
     }
 
-    function formatTime(timestamp){
-      if(!timestamp||typeof timestamp.toDate!=="function")return "";
-      return timestamp.toDate().toLocaleString("ru-RU",{
-        day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"
+    function formatTime(timestamp) {
+      if (!timestamp || typeof timestamp.toDate !== "function") {
+        return "";
+      }
+
+      return timestamp.toDate().toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
       });
     }
 
-    function renderMessage(data){
-      const wrap=document.createElement("article");
-      wrap.className="message"+(data.uid===currentUser.uid?" mine":"");
+    function getMessageOptions() {
+      const seconds = Number(messageExpiryEl.value);
 
-      const sender=document.createElement("div");
-      sender.className="sender";const messageEffectEl = $("messageEffect");
-const messageExpiryEl = $("messageExpiry");
-const chatThemeEl = $("chatTheme");
+      const options = {
+        effect: messageEffectEl.value
+      };
 
-function getMessageOptions() {
-  const seconds = Number(messageExpiryEl.value);
-  const options = {
-    effect: messageEffectEl.value
-  };
+      if (seconds > 0) {
+        options.expiresAt = new Date(Date.now() + seconds * 1000);
+      }
 
-  if (seconds > 0) {
-    options.expiresAt = new Date(Date.now() + seconds * 1000);
-  }
+      return options;
+    }
 
-  return options;
-}
-      sender.textContent=data.uid===currentUser.uid?"Вы":(targetUser?.username||"Собеседник");
+    function renderMessage(data) {
+      const wrap = document.createElement("article");
+
+      wrap.className =
+        "message" + (data.uid === currentUser.uid ? " mine" : "");
+
+      const sender = document.createElement("div");
+      sender.className = "sender";
+
+      sender.textContent =
+        data.uid === currentUser.uid
+          ? "Вы"
+          : (targetUser?.username || "Собеседник");
+
       wrap.appendChild(sender);
 
-      if(data.type==="image"){
-        const img=document.createElement("img");
-        img.src=data.imageUrl;
-        img.alt="Фотография";
-        img.loading="lazy";
-        img.addEventListener("error",()=>{
-          img.alt="Не удалось загрузить фотографию";
+      if (data.type === "image") {
+        const img = document.createElement("img");
+
+        img.src = data.imageUrl;
+        img.alt = "Фотография";
+        img.loading = "lazy";
+
+        img.addEventListener("error", () => {
+          img.alt = "Не удалось загрузить фотографию";
         });
+
         wrap.appendChild(img);
-      }else{
-        const text=document.createElement("div");
-        text.className="message-text";
-        text.textContent=data.text||"";
+      } else {
+        const text = document.createElement("div");
+
+        text.className = "message-text";
+        text.textContent = data.text || "";
+
         wrap.appendChild(text);
       }
 
-      const time=document.createElement("div");
-      time.className="time";
-      time.textContent=formatTime(data.createdAt);
+      const time = document.createElement("div");
+
+      time.className = "time";
+      time.textContent = formatTime(data.createdAt);
+
       wrap.appendChild(time);
+
       return wrap;
     }
 
-    async function openOrCreateChat(){
-      const ids=[currentUser.uid,targetUid].sort();
-      chatId=ids.join("__");
-      const chatRef=doc(db,"chats",chatId);
+    // Управление доступом к функциям чата
+    function setComposerEnabled(enabled) {
+      inputEl.disabled = !enabled;
+      sendBtn.disabled = !enabled;
 
-      await runTransaction(db,async transaction=>{
-        const snapshot=await transaction.get(chatRef);
-        if(!snapshot.exists()){
-          transaction.set(chatRef,{
-            members:ids,
-            createdAt:serverTimestamp()
+      galleryBtn.disabled = !enabled;
+      cameraBtn.disabled = !enabled;
+
+      messageEffectEl.disabled = !enabled;
+      messageExpiryEl.disabled = !enabled;
+      chatThemeEl.disabled = !enabled;
+
+      galleryInput.disabled = !enabled;
+      cameraInput.disabled = !enabled;
+
+      if (!enabled) {
+        callButton.disabled = true;
+      } else if (!activeCallId) {
+        callButton.disabled = false;
+      }
+    }
+
+    function stopChatListeners() {
+      if (stopMessages) {
+        stopMessages();
+        stopMessages = null;
+      }
+
+      if (stopIncomingCalls) {
+        stopIncomingCalls();
+        stopIncomingCalls = null;
+      }
+
+      chatStarted = false;
+    }
+
+    // Главная проверка блокировки
+    async function updateAccessState() {
+      if (!currentUser || !targetUser) return;
+
+      const blocked = ownBanned || targetBanned;
+
+      if (blocked) {
+        accessBlocked = true;
+
+        stopChatListeners();
+
+        if (activeCallId || peer || localStream) {
+          resetCallUI("Функции звонков недоступны.");
+        }
+
+        setComposerEnabled(false);
+
+        if (targetBanned) {
+          statusEl.textContent = "⛔ Аккаунт заблокирован";
+          notice(
+            "Этот аккаунт заблокирован. Отправка сообщений и звонки недоступны.",
+            true
+          );
+        } else {
+          statusEl.textContent = "⛔ Ваш аккаунт заблокирован";
+          notice(
+            "Ваш аккаунт Chatly заблокирован. Отправка сообщений и звонки недоступны.",
+            true
+          );
+        }
+
+        showEmpty("⛔ Переписка недоступна из-за блокировки аккаунта.");
+
+        return;
+      }
+
+      const wasBlocked = accessBlocked;
+      accessBlocked = false;
+
+      setComposerEnabled(true);
+
+      if (wasBlocked) {
+        notice("");
+        statusEl.textContent = "Восстановление чата…";
+      }
+
+      if (!chatStarted) {
+        chatStarted = true;
+
+        try {
+          await openOrCreateChat();
+
+          if (accessBlocked) return;
+
+          await watchIncomingCalls();
+
+          if (accessBlocked) {
+            stopChatListeners();
+            return;
+          }
+
+        } catch (error) {
+          chatStarted = false;
+          explainError(error);
+          statusEl.textContent = "Не удалось открыть чат";
+        }
+      }
+    }
+
+    async function openOrCreateChat() {
+      if (accessBlocked) return;
+
+      const ids = [currentUser.uid, targetUid].sort();
+
+      chatId = ids.join("__");
+
+      const chatRef = doc(db, "chats", chatId);
+
+      await runTransaction(db, async transaction => {
+        const snapshot = await transaction.get(chatRef);
+
+        if (!snapshot.exists()) {
+          transaction.set(chatRef, {
+            members: ids,
+            createdAt: serverTimestamp()
           });
-        }else{
-          const data=snapshot.data();
-          if(!Array.isArray(data.members)||
-             !data.members.includes(currentUser.uid)||
-             !data.members.includes(targetUid)){
-            throw new Error("Состав участников существующего чата не совпадает.");
+        } else {
+          const data = snapshot.data();
+
+          if (
+            !Array.isArray(data.members) ||
+            !data.members.includes(currentUser.uid) ||
+            !data.members.includes(targetUid)
+          ) {
+            throw new Error(
+              "Состав участников существующего чата не совпадает."
+            );
           }
         }
       });
 
-      const messagesQuery=query(
-        collection(db,"chats",chatId,"messages"),
-        orderBy("createdAt","asc")
+      if (accessBlocked) return;
+
+      const messagesQuery = query(
+        collection(db, "chats", chatId, "messages"),
+        orderBy("createdAt", "asc")
       );
 
-      if(stopMessages)stopMessages();
+      if (stopMessages) {
+        stopMessages();
+      }
 
-      stopMessages=onSnapshot(messagesQuery,snapshot=>{
+      stopMessages = onSnapshot(messagesQuery, snapshot => {
+        if (accessBlocked) return;
+
         messagesEl.replaceChildren();
-        if(snapshot.empty){
+
+        if (snapshot.empty) {
           showEmpty("Пока нет сообщений. Напишите первым!");
           return;
         }
-        snapshot.forEach(messageDoc=>{
+
+        snapshot.forEach(messageDoc => {
           messagesEl.appendChild(renderMessage(messageDoc.data()));
         });
-        messagesEl.scrollTop=messagesEl.scrollHeight;
-      },explainError);
 
-      statusEl.textContent="Чат подключён";
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      }, explainError);
+
+      statusEl.textContent = "Чат подключён";
     }
 
-    async function sendText(event){
+    async function sendText(event) {
       event.preventDefault();
-      const text=inputEl.value.trim();
-      if(!text||!chatId||busy)return;
 
-      busy=true;
-      sendBtn.disabled=true;
+      if (accessBlocked || ownBanned || targetBanned) {
+        notice("Отправка сообщений недоступна: аккаунт заблокирован.", true);
+        return;
+      }
+
+      const text = inputEl.value.trim();
+
+      if (!text || !chatId || busy) return;
+
+      busy = true;
+      sendBtn.disabled = true;
       notice("");
 
-      try{
-        await addDoc(collection(db,"chats",chatId,"messages"),{
-          type:"text",
+      try {
+        const options = getMessageOptions();
+
+        await addDoc(collection(db, "chats", chatId, "messages"), {
+          type: "text",
           text,
-          uid:currentUser.uid,
-          createdAt:serverTimestamp()
+          uid: currentUser.uid,
+          effect: options.effect,
+          expiresAt: options.expiresAt || null,
+          createdAt: serverTimestamp()
         });
-        inputEl.value="";
-      }catch(error){
+
+        inputEl.value = "";
+
+      } catch (error) {
         explainError(error);
-      }finally{
-        busy=false;
-        sendBtn.disabled=false;
+
+      } finally {
+        busy = false;
+
+        if (!accessBlocked) {
+          sendBtn.disabled = false;
+        }
+
         inputEl.focus();
       }
     }
 
-    async function sendImage(file){
-      if(!file||!chatId||busy)return;
-      if(!file.type.startsWith("image/")){
+    async function sendImage(file) {
+      if (accessBlocked || ownBanned || targetBanned) {
+        notice("Отправка фотографий недоступна: аккаунт заблокирован.", true);
+        return;
+      }
+
+      if (!file || !chatId || busy) return;
+
+      if (!file.type.startsWith("image/")) {
         notice("Выберите файл изображения.");
         return;
       }
-      if(file.size>8*1024*1024){
+
+      if (file.size > 8 * 1024 * 1024) {
         notice("Фото должно быть не больше 8 МБ.");
         return;
       }
 
-      busy=true;
-      galleryBtn.disabled=true;
-      cameraBtn.disabled=true;
-      sendBtn.disabled=true;
+      busy = true;
+
+      galleryBtn.disabled = true;
+      cameraBtn.disabled = true;
+      sendBtn.disabled = true;
+
       notice("Загрузка фотографии…");
 
-      try{
-        const extension=(file.name.split(".").pop()||"jpg")
-          .toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,8)||"jpg";
-        const fileName=Date.now()+"_"+Math.random().toString(36).slice(2)+"."+extension;
-        const imagePath=`chats/${chatId}/${currentUser.uid}/${fileName}`;
-        const imageRef=ref(storage,imagePath);
+      try {
+        const extension = (file.name.split(".").pop() || "jpg")
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "")
+          .slice(0, 8) || "jpg";
 
-        await uploadBytes(imageRef,file,{contentType:file.type});
-        const imageUrl=await getDownloadURL(imageRef);
+        const fileName =
+          Date.now() + "_" +
+          Math.random().toString(36).slice(2) +
+          "." + extension;
 
-        await addDoc(collection(db,"chats",chatId,"messages"),{
-          type:"image",
+        const imagePath =
+          `chats/${chatId}/${currentUser.uid}/${fileName}`;
+
+        const imageRef = ref(storage, imagePath);
+
+        await uploadBytes(imageRef, file, {
+          contentType: file.type
+        });
+
+        if (accessBlocked) {
+          notice("Аккаунт заблокирован. Фотография не отправлена.", true);
+          return;
+        }
+
+        const imageUrl = await getDownloadURL(imageRef);
+
+        await addDoc(collection(db, "chats", chatId, "messages"), {
+          type: "image",
           imageUrl,
           imagePath,
-          uid:currentUser.uid,
-          createdAt:serverTimestamp()
+          uid: currentUser.uid,
+          createdAt: serverTimestamp()
         });
 
         notice("Фотография отправлена.");
-      }catch(error){
+
+      } catch (error) {
         explainError(error);
-      }finally{
-        busy=false;
-        galleryBtn.disabled=false;
-        cameraBtn.disabled=false;
-        sendBtn.disabled=false;
-        galleryInput.value="";
-        cameraInput.value="";
+
+      } finally {
+        busy = false;
+
+        galleryBtn.disabled = accessBlocked;
+        cameraBtn.disabled = accessBlocked;
+        sendBtn.disabled = accessBlocked;
+
+        galleryInput.value = "";
+        cameraInput.value = "";
       }
     }
 
-    $("messageForm").addEventListener("submit",sendText);
-    galleryBtn.addEventListener("click",()=>galleryInput.click());
-    cameraBtn.addEventListener("click",()=>cameraInput.click());
-    galleryInput.addEventListener("change",()=>sendImage(galleryInput.files?.[0]));
-    cameraInput.addEventListener("change",()=>sendImage(cameraInput.files?.[0]));
+    $("messageForm").addEventListener("submit", sendText);
+
+    galleryBtn.addEventListener("click", () => {
+      if (!accessBlocked) galleryInput.click();
+    });
+
+    cameraBtn.addEventListener("click", () => {
+      if (!accessBlocked) cameraInput.click();
+    });
+
+    galleryInput.addEventListener("change", () => {
+      sendImage(galleryInput.files?.[0]);
+    });
+
+    cameraInput.addEventListener("change", () => {
+      sendImage(cameraInput.files?.[0]);
+    });
 
     // WebRTC: сигналинг через Firestore, звук напрямую между устройствами.
-    // Используются бесплатные STUN-серверы. TURN пока не подключён.
-    const rtcConfig={
-      iceServers:[
-        {urls:"stun:stun.l.google.com:19302"},
-        {urls:"stun:stun1.l.google.com:19302"}
+    // Используются STUN-серверы. TURN пока не подключён.
+    const rtcConfig = {
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" }
       ],
-      iceCandidatePoolSize:10
+      iceCandidatePoolSize: 10
     };
 
-    function setCallButtons(mode){
-      callPanel.style.display=mode==="hidden"?"none":"block";
-      acceptCallBtn.hidden=mode!=="incoming";
-      rejectCallBtn.hidden=mode!=="incoming";
-      muteCallBtn.hidden=mode!=="active";
-      hangupCallBtn.hidden=mode==="hidden";
-      callButton.disabled=mode!=="hidden";
+    function setCallButtons(mode) {
+      callPanel.style.display = mode === "hidden" ? "none" : "block";
+
+      acceptCallBtn.hidden = mode !== "incoming";
+      rejectCallBtn.hidden = mode !== "incoming";
+
+      muteCallBtn.hidden = mode !== "active";
+      hangupCallBtn.hidden = mode === "hidden";
+
+      callButton.disabled = mode !== "hidden" || accessBlocked;
     }
 
-    function stopCallListeners(){
-      if(stopCallDoc){
+    function stopCallListeners() {
+      if (stopCallDoc) {
         stopCallDoc();
-        stopCallDoc=null;
+        stopCallDoc = null;
       }
-      if(stopCandidates){
+
+      if (stopCandidates) {
         stopCandidates();
-        stopCandidates=null;
+        stopCandidates = null;
       }
     }
 
-    function cleanupPeer(){
+    function cleanupPeer() {
       stopCallListeners();
 
-      if(peer){
-        peer.ontrack=null;
-        peer.onicecandidate=null;
-        peer.onconnectionstatechange=null;
-        peer.oniceconnectionstatechange=null;
+      if (peer) {
+        peer.ontrack = null;
+        peer.onicecandidate = null;
+        peer.onconnectionstatechange = null;
+        peer.oniceconnectionstatechange = null;
+
         peer.close();
-        peer=null;
+        peer = null;
       }
 
-      if(localStream){
-        localStream.getTracks().forEach(track=>track.stop());
-        localStream=null;
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
       }
 
-      remoteAudio.srcObject=null;
-      queuedRemoteCandidates=[];
-      muted=false;
-      muteCallBtn.textContent="🔇 Выключить микрофон";
+      remoteAudio.srcObject = null;
+      queuedRemoteCandidates = [];
+      muted = false;
+
+      muteCallBtn.textContent = "🔇 Выключить микрофон";
     }
 
-    function resetCallUI(message=""){
+    function resetCallUI(message = "") {
       cleanupPeer();
-      activeCallId=null;
-      handlingIncoming=false;
+
+      activeCallId = null;
+      handlingIncoming = false;
+
       setCallButtons("hidden");
-      callTitle.textContent="Голосовой звонок";
-      callHint.textContent=message||"Для звонка разрешите доступ к микрофону.";
+
+      callTitle.textContent = "Голосовой звонок";
+
+      callHint.textContent =
+        message || "Для звонка разрешите доступ к микрофону.";
     }
 
-    async function setupPeer(){
-      if(!navigator.mediaDevices?.getUserMedia){
-        throw new Error("Браузер не поддерживает микрофон. Откройте Chatly через HTTPS.");
+    async function setupPeer() {
+      if (accessBlocked) {
+        throw new Error("Звонки недоступны: аккаунт заблокирован.");
       }
 
-      localStream=await navigator.mediaDevices.getUserMedia({
-        audio:true,
-        video:false
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error(
+          "Браузер не поддерживает микрофон. Откройте Chatly через HTTPS."
+        );
+      }
+
+      localStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false
       });
 
-      peer=new RTCPeerConnection(rtcConfig);
+      peer = new RTCPeerConnection(rtcConfig);
 
-      localStream.getTracks().forEach(track=>{
-        peer.addTrack(track,localStream);
+      localStream.getTracks().forEach(track => {
+        peer.addTrack(track, localStream);
       });
 
-      peer.ontrack=event=>{
-        if(event.streams&&event.streams[0]){
-          remoteAudio.srcObject=event.streams[0];
-        }else{
-          const stream=remoteAudio.srcObject||new MediaStream();
+      peer.ontrack = event => {
+        if (event.streams && event.streams[0]) {
+          remoteAudio.srcObject = event.streams[0];
+        } else {
+          const stream = remoteAudio.srcObject || new MediaStream();
+
           stream.addTrack(event.track);
-          remoteAudio.srcObject=stream;
+          remoteAudio.srcObject = stream;
         }
 
-        remoteAudio.play().catch(()=>{
-          callHint.textContent="Нажмите на экран, чтобы включить звук.";
+        remoteAudio.play().catch(() => {
+          callHint.textContent =
+            "Нажмите на экран, чтобы включить звук.";
         });
       };
 
-      peer.onconnectionstatechange=()=>{
-        if(!peer)return;
-        const state=peer.connectionState;
-        callHint.textContent="Соединение: "+state;
+      peer.onconnectionstatechange = () => {
+        if (!peer) return;
 
-        if(state==="failed"){
-          callHint.textContent="Не удалось соединиться. Этой сети может понадобиться TURN-сервер.";
+        const state = peer.connectionState;
+
+        callHint.textContent = "Соединение: " + state;
+
+        if (state === "failed") {
+          callHint.textContent =
+            "Не удалось соединиться. Этой сети может понадобиться TURN-сервер.";
         }
 
-        if(state==="connected"){
-          callHint.textContent="Звонок подключён.";
+        if (state === "connected") {
+          callHint.textContent = "Звонок подключён.";
         }
 
-        if(state==="disconnected"){
-          callHint.textContent="Соединение прервано. Ожидаем восстановления…";
+        if (state === "disconnected") {
+          callHint.textContent =
+            "Соединение прервано. Ожидаем восстановления…";
         }
       };
 
-      peer.oniceconnectionstatechange=()=>{
-        if(!peer)return;
-        console.log("Chatly ICE state:",peer.iceConnectionState);
+      peer.oniceconnectionstatechange = () => {
+        if (!peer) return;
+
+        console.log("Chatly ICE state:", peer.iceConnectionState);
       };
 
       return peer;
     }
 
-    async function addIceCandidateSafely(candidateData){
-      if(!peer||!candidateData?.candidate)return;
+    async function addIceCandidateSafely(candidateData) {
+      if (!peer || !candidateData?.candidate) return;
 
-      const candidate=new RTCIceCandidate(candidateData.candidate);
+      const candidate = new RTCIceCandidate(candidateData.candidate);
 
-      if(peer.remoteDescription){
+      if (peer.remoteDescription) {
         await peer.addIceCandidate(candidate);
-      }else{
+      } else {
         queuedRemoteCandidates.push(candidate);
       }
     }
 
-    async function flushCandidates(){
-      if(!peer||!peer.remoteDescription)return;
+    async function flushCandidates() {
+      if (!peer || !peer.remoteDescription) return;
 
-      for(const candidate of queuedRemoteCandidates.splice(0)){
-        try{
+      for (const candidate of queuedRemoteCandidates.splice(0)) {
+        try {
           await peer.addIceCandidate(candidate);
-        }catch(error){
-          console.warn("ICE candidate skipped",error);
+        } catch (error) {
+          console.warn("ICE candidate skipped", error);
         }
       }
     }
 
-    function watchRemoteCandidates(callId,remoteUid){
-      if(stopCandidates)stopCandidates();
+    function watchRemoteCandidates(callId, remoteUid) {
+      if (stopCandidates) stopCandidates();
 
-      const candidatesQuery=query(
-        collection(db,"calls",callId,"candidates"),
-        where("senderUid","==",remoteUid)
+      const candidatesQuery = query(
+        collection(db, "calls", callId, "candidates"),
+        where("senderUid", "==", remoteUid)
       );
 
-      stopCandidates=onSnapshot(candidatesQuery,snapshot=>{
-        snapshot.docChanges().forEach(change=>{
-          if(change.type==="added"){
-            addIceCandidateSafely(change.doc.data()).catch(error=>{
-              console.warn("Remote ICE candidate error:",error);
+      stopCandidates = onSnapshot(candidatesQuery, snapshot => {
+        snapshot.docChanges().forEach(change => {
+          if (change.type === "added") {
+            addIceCandidateSafely(change.doc.data()).catch(error => {
+              console.warn("Remote ICE candidate error:", error);
             });
           }
         });
-      },error=>{
+      }, error => {
         explainError(error);
       });
     }
 
-    function publishLocalCandidates(callId){
-      if(!peer)return;
+    function publishLocalCandidates(callId) {
+      if (!peer) return;
 
-      peer.onicecandidate=async event=>{
-        if(!event.candidate||!currentUser)return;
+      peer.onicecandidate = async event => {
+        if (!event.candidate || !currentUser || accessBlocked) return;
 
-        try{
-          await addDoc(collection(db,"calls",callId,"candidates"),{
-            senderUid:currentUser.uid,
-            candidate:event.candidate.toJSON(),
-            createdAt:serverTimestamp()
+        try {
+          await addDoc(collection(db, "calls", callId, "candidates"), {
+            senderUid: currentUser.uid,
+            candidate: event.candidate.toJSON(),
+            createdAt: serverTimestamp()
           });
-        }catch(error){
+
+        } catch (error) {
           explainError(error);
         }
       };
     }
 
-    // ИСПРАВЛЕНО: сначала создаём документ звонка и включаем
-    // обработчик ICE, а только затем начинаем сбор кандидатов.
-    async function startCall(){
-      if(!currentUser||!chatId||activeCallId||busy)return;
+    async function startCall() {
+      if (
+        accessBlocked ||
+        ownBanned ||
+        targetBanned ||
+        !currentUser ||
+        !chatId ||
+        activeCallId ||
+        busy
+      ) {
+        return;
+      }
 
-      callButton.disabled=true;
+      callButton.disabled = true;
       notice("");
 
-      try{
-        const callPeer=await setupPeer();
-        const offer=await callPeer.createOffer();
+      try {
+        const callPeer = await setupPeer();
 
-        const callRef=await addDoc(collection(db,"calls"),{
-          callerUid:currentUser.uid,
-          calleeUid:targetUid,
+        if (accessBlocked) {
+          throw new Error("Аккаунт заблокирован.");
+        }
+
+        const offer = await callPeer.createOffer();
+
+        const callRef = await addDoc(collection(db, "calls"), {
+          callerUid: currentUser.uid,
+          calleeUid: targetUid,
           chatId,
-          status:"ringing",
-          offer:{
-            type:offer.type,
-            sdp:offer.sdp
+          status: "ringing",
+          offer: {
+            type: offer.type,
+            sdp: offer.sdp
           },
-          createdAt:serverTimestamp()
+          createdAt: serverTimestamp()
         });
 
-        activeCallId=callRef.id;
-        handlingIncoming=false;
+        activeCallId = callRef.id;
+        handlingIncoming = false;
 
-        // Подключаем обработчики до setLocalDescription.
         publishLocalCandidates(activeCallId);
-        watchRemoteCandidates(activeCallId,targetUid);
+        watchRemoteCandidates(activeCallId, targetUid);
 
         await callPeer.setLocalDescription(offer);
 
         setCallButtons("active");
-        callTitle.textContent="Звоним: "+(targetUser?.username||"собеседнику");
-        callHint.textContent="Ожидаем ответа…";
 
-        stopCallDoc=onSnapshot(callRef,async snapshot=>{
-          if(!snapshot.exists()||!peer)return;
+        callTitle.textContent =
+          "Звоним: " + (targetUser?.username || "собеседнику");
 
-          const data=snapshot.data();
+        callHint.textContent = "Ожидаем ответа…";
 
-          if(data.status==="rejected"||data.status==="ended"){
+        stopCallDoc = onSnapshot(callRef, async snapshot => {
+          if (!snapshot.exists() || !peer) return;
+
+          const data = snapshot.data();
+
+          if (data.status === "rejected" || data.status === "ended") {
             resetCallUI(
-              data.status==="rejected"
-                ?"Собеседник отклонил звонок."
-                :"Звонок завершён."
+              data.status === "rejected"
+                ? "Собеседник отклонил звонок."
+                : "Звонок завершён."
             );
+
             return;
           }
 
-          if(data.answer&&peer&&!peer.remoteDescription){
-            try{
+          if (data.answer && peer && !peer.remoteDescription) {
+            try {
               await peer.setRemoteDescription(
                 new RTCSessionDescription(data.answer)
               );
+
               await flushCandidates();
-            }catch(error){
+
+            } catch (error) {
               explainError(error);
             }
           }
-        },explainError);
+        }, explainError);
 
-      }catch(error){
+      } catch (error) {
         explainError(error);
         resetCallUI("Не удалось начать звонок.");
       }
     }
 
-    async function acceptCall(){
-      if(!activeCallId||!handlingIncoming)return;
+    async function acceptCall() {
+      if (
+        accessBlocked ||
+        !activeCallId ||
+        !handlingIncoming
+      ) {
+        return;
+      }
 
-      acceptCallBtn.disabled=true;
-      rejectCallBtn.disabled=true;
+      acceptCallBtn.disabled = true;
+      rejectCallBtn.disabled = true;
 
-      try{
-        const callRef=doc(db,"calls",activeCallId);
-        const callSnap=await getDoc(callRef);
+      try {
+        const callRef = doc(db, "calls", activeCallId);
+        const callSnap = await getDoc(callRef);
 
-        if(!callSnap.exists()){
+        if (!callSnap.exists()) {
           throw new Error("Звонок уже недоступен.");
         }
 
-        const data=callSnap.data();
+        const data = callSnap.data();
 
-        if(data.calleeUid!==currentUser.uid||data.status!=="ringing"){
+        if (
+          data.calleeUid !== currentUser.uid ||
+          data.status !== "ringing"
+        ) {
           throw new Error("Этот звонок уже завершён.");
         }
 
@@ -647,197 +984,283 @@ function getMessageOptions() {
 
         await flushCandidates();
 
-        watchRemoteCandidates(activeCallId,data.callerUid);
+        watchRemoteCandidates(activeCallId, data.callerUid);
         publishLocalCandidates(activeCallId);
 
-        const answer=await peer.createAnswer();
+        const answer = await peer.createAnswer();
+
         await peer.setLocalDescription(answer);
 
-        await updateDoc(callRef,{
-          answer:{
-            type:answer.type,
-            sdp:answer.sdp
+        await updateDoc(callRef, {
+          answer: {
+            type: answer.type,
+            sdp: answer.sdp
           },
-          status:"accepted"
+          status: "accepted"
         });
 
-        handlingIncoming=false;
+        handlingIncoming = false;
+
         setCallButtons("active");
 
-        callTitle.textContent="Разговор с "+(targetUser?.username||"собеседником");
-        callHint.textContent="Подключаем звук…";
+        callTitle.textContent =
+          "Разговор с " + (targetUser?.username || "собеседником");
 
-        stopCallDoc=onSnapshot(callRef,snapshot=>{
-          if(!snapshot.exists())return;
+        callHint.textContent = "Подключаем звук…";
 
-          const callData=snapshot.data();
+        stopCallDoc = onSnapshot(callRef, snapshot => {
+          if (!snapshot.exists()) return;
 
-          if(callData.status==="ended"||callData.status==="rejected"){
+          const callData = snapshot.data();
+
+          if (
+            callData.status === "ended" ||
+            callData.status === "rejected"
+          ) {
             resetCallUI("Звонок завершён.");
           }
-        },explainError);
+        }, explainError);
 
-      }catch(error){
+      } catch (error) {
         explainError(error);
         resetCallUI("Не удалось ответить на звонок.");
-      }finally{
-        acceptCallBtn.disabled=false;
-        rejectCallBtn.disabled=false;
+
+      } finally {
+        acceptCallBtn.disabled = false;
+        rejectCallBtn.disabled = false;
       }
     }
 
-    async function rejectCall(){
-      if(!activeCallId)return;
+    async function rejectCall() {
+      if (!activeCallId) return;
 
-      try{
-        await updateDoc(doc(db,"calls",activeCallId),{
-          status:"rejected"
+      try {
+        await updateDoc(doc(db, "calls", activeCallId), {
+          status: "rejected"
         });
-      }catch(error){
+
+      } catch (error) {
         explainError(error);
       }
 
       resetCallUI("Звонок отклонён.");
     }
 
-    async function hangupCall(){
-      const id=activeCallId;
+    async function hangupCall() {
+      const id = activeCallId;
 
-      if(id){
-        try{
-          await updateDoc(doc(db,"calls",id),{
-            status:"ended"
+      if (id) {
+        try {
+          await updateDoc(doc(db, "calls", id), {
+            status: "ended"
           });
-        }catch(error){
-          console.warn("Could not mark call ended",error);
+
+        } catch (error) {
+          console.warn("Could not mark call ended", error);
         }
       }
 
       resetCallUI("Звонок завершён.");
     }
 
-    async function watchIncomingCalls(){
-      if(stopIncomingCalls){
+    async function watchIncomingCalls() {
+      if (accessBlocked) return;
+
+      if (stopIncomingCalls) {
         stopIncomingCalls();
-        stopIncomingCalls=null;
+        stopIncomingCalls = null;
       }
 
-      const incomingQuery=query(
-        collection(db,"calls"),
-        where("calleeUid","==",currentUser.uid)
+      const incomingQuery = query(
+        collection(db, "calls"),
+        where("calleeUid", "==", currentUser.uid)
       );
 
-      stopIncomingCalls=onSnapshot(incomingQuery,snapshot=>{
-        if(activeCallId||handlingIncoming)return;
+      stopIncomingCalls = onSnapshot(incomingQuery, snapshot => {
+        if (accessBlocked || activeCallId || handlingIncoming) return;
 
-        const incoming=snapshot.docs
-          .map(item=>({id:item.id,...item.data()}))
-          .filter(item=>
-            item.status==="ringing"&&
-            item.callerUid!==currentUser.uid
+        const incoming = snapshot.docs
+          .map(item => ({
+            id: item.id,
+            ...item.data()
+          }))
+          .filter(item =>
+            item.status === "ringing" &&
+            item.callerUid !== currentUser.uid &&
+            item.chatId === chatId
           )
-          .sort((a,b)=>
-            (b.createdAt?.toMillis?.()||0)-
-            (a.createdAt?.toMillis?.()||0)
+          .sort((a, b) =>
+            (b.createdAt?.toMillis?.() || 0) -
+            (a.createdAt?.toMillis?.() || 0)
           )[0];
 
-        if(!incoming)return;
+        if (!incoming) return;
 
-        activeCallId=incoming.id;
-        handlingIncoming=true;
+        activeCallId = incoming.id;
+        handlingIncoming = true;
 
-        callTitle.textContent="Входящий звонок";
-        callHint.textContent="Вам звонит пользователь Chatly.";
+        callTitle.textContent = "Входящий звонок";
+        callHint.textContent = "Вам звонит пользователь Chatly.";
+
         setCallButtons("incoming");
 
-        getDoc(doc(db,"users",incoming.callerUid))
-          .then(profile=>{
-            if(profile.exists()){
-              callTitle.textContent="Вам звонит "+
-                (profile.data().username||"пользователь");
+        getDoc(doc(db, "users", incoming.callerUid))
+          .then(profile => {
+            if (profile.exists() && !accessBlocked) {
+              const caller = profile.data();
+
+              if (caller.banned === true) {
+                resetCallUI("Звонок от заблокированного аккаунта отклонён.");
+                return;
+              }
+
+              callTitle.textContent =
+                "Вам звонит " + (caller.username || "пользователь");
             }
           })
-          .catch(()=>{});
-      },error=>{
+          .catch(() => {});
+
+      }, error => {
         explainError(error);
       });
     }
 
-    callButton.addEventListener("click",startCall);
-    acceptCallBtn.addEventListener("click",acceptCall);
-    rejectCallBtn.addEventListener("click",rejectCall);
-    hangupCallBtn.addEventListener("click",hangupCall);
+    callButton.addEventListener("click", startCall);
+    acceptCallBtn.addEventListener("click", acceptCall);
+    rejectCallBtn.addEventListener("click", rejectCall);
+    hangupCallBtn.addEventListener("click", hangupCall);
 
-    muteCallBtn.addEventListener("click",()=>{
-      if(!localStream)return;
+    muteCallBtn.addEventListener("click", () => {
+      if (!localStream || accessBlocked) return;
 
-      muted=!muted;
+      muted = !muted;
 
-      localStream.getAudioTracks().forEach(track=>{
-        track.enabled=!muted;
+      localStream.getAudioTracks().forEach(track => {
+        track.enabled = !muted;
       });
 
-      muteCallBtn.textContent=muted
-        ?"🎙️ Включить микрофон"
-        :"🔇 Выключить микрофон";
+      muteCallBtn.textContent = muted
+        ? "🎙️ Включить микрофон"
+        : "🔇 Выключить микрофон";
     });
 
-    onAuthStateChanged(auth,async user=>{
-      if(stopMessages){
-        stopMessages();
-        stopMessages=null;
+    // Авторизация и наблюдение за блокировкой в реальном времени
+    onAuthStateChanged(auth, async user => {
+      stopChatListeners();
+
+      if (stopOwnProfile) {
+        stopOwnProfile();
+        stopOwnProfile = null;
       }
 
-      if(stopIncomingCalls){
-        stopIncomingCalls();
-        stopIncomingCalls=null;
+      if (stopTargetProfile) {
+        stopTargetProfile();
+        stopTargetProfile = null;
       }
 
-      currentUser=user;
+      resetCallUI();
 
-      if(!user){
-        statusEl.textContent="Не выполнен вход";
+      currentUser = user;
+      targetUser = null;
+
+      ownBanned = false;
+      targetBanned = false;
+      accessBlocked = false;
+
+      if (!user) {
+        setComposerEnabled(false);
+
+        statusEl.textContent = "Не выполнен вход";
+
         notice("Войдите в Chatly, чтобы открыть переписку.");
+
+        showEmpty("Для просмотра переписки войдите в Chatly.");
+
         return;
       }
 
-      if(!targetUid||targetUid===user.uid){
+      if (!targetUid || targetUid === user.uid) {
+        setComposerEnabled(false);
+
         notice("Некорректный UID собеседника.");
-        statusEl.textContent="Чат не найден";
+
+        statusEl.textContent = "Чат не найден";
+
         return;
       }
 
-      try{
-        statusEl.textContent="Загрузка профиля…";
+      try {
+        statusEl.textContent = "Загрузка профиля…";
 
-        const [ownSnapshot,targetSnapshot]=await Promise.all([
-          getDoc(doc(db,"users",user.uid)),
-          getDoc(doc(db,"users",targetUid))
+        const [ownSnapshot, targetSnapshot] = await Promise.all([
+          getDoc(doc(db, "users", user.uid)),
+          getDoc(doc(db, "users", targetUid))
         ]);
 
-        if(!ownSnapshot.exists()){
-          throw new Error("Ваш профиль не найден в users/"+user.uid);
+        if (!ownSnapshot.exists()) {
+          throw new Error("Ваш профиль не найден в users/" + user.uid);
         }
 
-        if(!targetSnapshot.exists()){
+        if (!targetSnapshot.exists()) {
           throw new Error("Профиль собеседника не найден.");
         }
 
-        targetUser=targetSnapshot.data();
-        usernameEl.textContent=targetUser.username||"Собеседник";
+        targetUser = targetSnapshot.data();
 
-        await openOrCreateChat();
-        await watchIncomingCalls();
+        usernameEl.textContent =
+          targetUser.username || "Собеседник";
 
-      }catch(error){
+        ownBanned = ownSnapshot.data().banned === true;
+        targetBanned = targetSnapshot.data().banned === true;
+
+        // Следим за изменением блокировки собственного аккаунта
+        stopOwnProfile = onSnapshot(
+          doc(db, "users", user.uid),
+          snapshot => {
+            if (!snapshot.exists()) return;
+
+            ownBanned = snapshot.data().banned === true;
+
+            updateAccessState();
+          },
+          explainError
+        );
+
+        // Следим за изменением блокировки собеседника
+        stopTargetProfile = onSnapshot(
+          doc(db, "users", targetUid),
+          snapshot => {
+            if (!snapshot.exists()) return;
+
+            targetUser = snapshot.data();
+
+            targetBanned = targetUser.banned === true;
+
+            usernameEl.textContent =
+              targetUser.username || "Собеседник";
+
+            updateAccessState();
+          },
+          explainError
+        );
+
+        await updateAccessState();
+
+      } catch (error) {
         explainError(error);
-        statusEl.textContent="Не удалось открыть чат";
+
+        statusEl.textContent = "Не удалось открыть чат";
+
+        setComposerEnabled(false);
       }
     });
 
-    window.addEventListener("pagehide",()=>{
-      if(stopMessages)stopMessages();
-      if(stopIncomingCalls)stopIncomingCalls();
+    window.addEventListener("pagehide", () => {
+      stopChatListeners();
+
+      if (stopOwnProfile) stopOwnProfile();
+      if (stopTargetProfile) stopTargetProfile();
+
       cleanupPeer();
     });
   </script>
