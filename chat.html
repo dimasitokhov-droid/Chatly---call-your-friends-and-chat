@@ -1264,5 +1264,190 @@
       cleanupPeer();
     });
   </script>
+
+<!-- CHATLY WINTER THEME -->
+<style id="chatly-winter-chat">
+  body.winter-theme {
+    background:
+      radial-gradient(ellipse at 15% 0%, #29365a 0%, transparent 45%),
+      radial-gradient(ellipse at 90% 80%, #302653 0%, transparent 45%),
+      #101522;
+    transition: background .5s ease;
+  }
+
+  body.winter-theme header,
+  body.winter-theme #composer {
+    background: rgba(25, 31, 49, .92);
+    backdrop-filter: blur(18px);
+    border-color: rgba(210, 220, 255, .16);
+  }
+
+  body.winter-theme #messages {
+    background:
+      radial-gradient(circle at 20% 20%, #ffffff0b 1px, transparent 2px),
+      radial-gradient(circle at 80% 65%, #ffffff0b 1px, transparent 2px);
+    background-size: 75px 75px;
+  }
+
+  body.winter-theme .message {
+    background: linear-gradient(135deg, #303c59, #252d45);
+    border: 1px solid #c9d8ff22;
+    box-shadow: 0 5px 18px #080d1d55;
+  }
+
+  body.winter-theme .message.mine {
+    background: linear-gradient(135deg, #6655b5, #493b88);
+    border: 1px solid #d8caff44;
+  }
+
+  body.winter-theme #callPanel {
+    background: rgba(39, 49, 76, .9);
+    border-color: #a9c9ff44;
+  }
+
+  body.winter-theme #messageInput,
+  body.winter-theme .chat-features select {
+    background: #171e30;
+    color: #f5f5ff;
+    border: 1px solid #a9c9ff55;
+  }
+
+  body.winter-theme button {
+    transition: transform .2s, box-shadow .2s;
+  }
+
+  body.winter-theme button:not(:disabled):active {
+    transform: scale(.96);
+  }
+
+  body.winter-theme #send {
+    background: linear-gradient(135deg, #a9baff, #8b78e8);
+    color: #17152b;
+    box-shadow: 0 0 15px #a9baff44;
+  }
+
+  body.winter-theme .winter-flake {
+    position: fixed;
+    top: -25px;
+    z-index: 10;
+    pointer-events: none;
+    color: #e9f3ff;
+    text-shadow: 0 0 9px #c9e3ff;
+    animation: chatSnowFall linear forwards;
+  }
+
+  @keyframes chatSnowFall {
+    to {
+      transform: translate3d(35px, 110vh, 0) rotate(300deg);
+      opacity: 0;
+    }
+  }
+
+  body.winter-theme .message {
+    animation: winterMessageIn .35s ease both;
+  }
+
+  @keyframes winterMessageIn {
+    from {
+      opacity: 0;
+      transform: translateY(9px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  #winterChatToggle {
+    flex-shrink: 0;
+    padding: 10px;
+    border-radius: 16px;
+    background: #30384e;
+    color: #e4edff;
+    font-size: 12px;
+  }
+
+  body.winter-theme #winterChatToggle {
+    background: linear-gradient(135deg, #52658f, #51447f);
+    box-shadow: 0 0 14px #9ebeff44;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body.winter-theme *,
+    body.winter-theme *::before,
+    body.winter-theme *::after {
+      animation-duration: .01ms !important;
+      transition-duration: .01ms !important;
+    }
+  }
+</style>
+
+<script>
+(() => {
+  const STORAGE_KEY = "chatly_winter_theme";
+  const header = document.querySelector("header");
+
+  if (!header || document.getElementById("winterChatToggle")) return;
+
+  const toggle = document.createElement("button");
+  toggle.id = "winterChatToggle";
+  toggle.type = "button";
+
+  const backButton = document.getElementById("back");
+  backButton.insertAdjacentElement("afterend", toggle);
+
+  let enabled = localStorage.getItem(STORAGE_KEY) === "on";
+
+  function updateTheme() {
+    document.body.classList.toggle("winter-theme", enabled);
+    toggle.textContent = enabled ? "❄️ Вкл." : "❄️ Выкл.";
+    toggle.setAttribute("aria-pressed", String(enabled));
+
+    if (!enabled) {
+      document.querySelectorAll(".winter-flake").forEach(flake => flake.remove());
+    }
+  }
+
+  toggle.addEventListener("click", () => {
+    enabled = !enabled;
+    localStorage.setItem(STORAGE_KEY, enabled ? "on" : "off");
+    updateTheme();
+  });
+
+  let snowTimer = null;
+
+  function createSnowflake() {
+    if (!enabled || document.querySelectorAll(".winter-flake").length > 28) return;
+
+    const flake = document.createElement("span");
+    flake.className = "winter-flake";
+    flake.textContent = Math.random() > .5 ? "❄" : "❅";
+    flake.style.left = Math.random() * 100 + "vw";
+    flake.style.fontSize = (10 + Math.random() * 13) + "px";
+    flake.style.opacity = .35 + Math.random() * .6;
+    flake.style.animationDuration = (5 + Math.random() * 6) + "s";
+
+    document.body.appendChild(flake);
+
+    flake.addEventListener("animationend", () => flake.remove());
+  }
+
+  function updateSnow() {
+    if (enabled && !snowTimer) {
+      createSnowflake();
+      snowTimer = setInterval(createSnowflake, 500);
+    } else if (!enabled && snowTimer) {
+      clearInterval(snowTimer);
+      snowTimer = null;
+    }
+  }
+
+  updateTheme();
+  updateSnow();
+
+  toggle.addEventListener("click", updateSnow);
+})();
+</script>
+
 </body>
 </html>
