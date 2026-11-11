@@ -910,6 +910,8 @@ body.winter-theme .errorModal {
   applyWinter(saved);
 })();
 </script>
+
+<style>
 /* ✨ CHATLY WINTER EFFECTS */
 
 body.winter-theme .panel {
@@ -1037,9 +1039,10 @@ body.winter-theme .panel:active {
 
   const observer = new MutationObserver(updateSnow);
   observer.observe(document.body, {
-    attributes:true,
-    attributeFilter:["class"]
-  });
+  attributes:true,
+  attributeFilter:["class"]
+});
 })();
+</script>
 </body>
 </html>
