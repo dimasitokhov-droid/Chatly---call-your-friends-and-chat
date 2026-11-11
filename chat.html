@@ -534,13 +534,22 @@
         const options = getMessageOptions();
 
         await addDoc(collection(db, "chats", chatId, "messages"), {
-          type: "text",
-          text,
-          uid: currentUser.uid,
-          effect: options.effect,
-          expiresAt: options.expiresAt || null,
-          createdAt: serverTimestamp()
-        });
+          const messageData = {
+  type: "text",
+  text,
+  uid: currentUser.uid,
+  effect: options.effect,
+  createdAt: serverTimestamp()
+};
+
+if (options.expiresAt) {
+  messageData.expiresAt = options.expiresAt;
+}
+
+await addDoc(
+  collection(db, "chats", chatId, "messages"),
+  messageData
+);
 
         inputEl.value = "";
 
