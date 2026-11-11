@@ -759,5 +759,157 @@ onAuthStateChanged(auth,async user=>{
   }
 });
 </script>
+
+<style id="chatly-winter-theme">
+/* ❄️ CHATLY WINTER UPDATE */
+body.winter-theme {
+  --winter-bg:#080d20;
+  --winter-card:rgba(23,31,65,.88);
+  --winter-border:rgba(172,190,255,.35);
+  background:
+    radial-gradient(ellipse at 50% 0%,#252b68 0%,transparent 55%),
+    linear-gradient(180deg,#090e22,#11152e 65%,#25204b)!important;
+  background-attachment:fixed!important;
+}
+
+body.winter-theme::before {
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  opacity:.55;
+  background-image:
+    radial-gradient(3px 3px at 10% 20%,#fff 45%,transparent 55%),
+    radial-gradient(2px 2px at 30% 70%,#dce5ff 45%,transparent 55%),
+    radial-gradient(3px 3px at 65% 35%,#fff 45%,transparent 55%),
+    radial-gradient(2px 2px at 85% 80%,#dce5ff 45%,transparent 55%);
+  background-size:190px 190px,240px 240px,300px 300px,220px 220px;
+  animation:winterSnow 18s linear infinite;
+}
+
+@keyframes winterSnow {
+  from {background-position:0 0,0 0,0 0,0 0}
+  to {background-position:0 380px,0 480px,0 600px,0 440px}
+}
+
+body.winter-theme header {
+  position:relative;
+  z-index:1;
+  background:rgba(17,23,49,.88)!important;
+  border-bottom:1px solid var(--winter-border)!important;
+  backdrop-filter:blur(16px);
+}
+
+body.winter-theme .logo {
+  color:#c5a5ff!important;
+  text-shadow:0 0 18px #9475ff88;
+}
+
+body.winter-theme main {
+  position:relative;
+  z-index:1;
+}
+
+body.winter-theme .panel {
+  background:var(--winter-card)!important;
+  border:1px solid var(--winter-border)!important;
+  border-radius:26px!important;
+  box-shadow:0 8px 30px #0005,0 0 18px #8d83ff18;
+  backdrop-filter:blur(14px);
+}
+
+body.winter-theme h1,
+body.winter-theme h2,
+body.winter-theme h3 {
+  color:#f1edff;
+}
+
+body.winter-theme p,
+body.winter-theme .muted {
+  color:#c4c9e9;
+}
+
+body.winter-theme input {
+  background:#101832!important;
+  border:1px solid #58618e!important;
+  color:white!important;
+  border-radius:16px!important;
+}
+
+body.winter-theme button {
+  background:linear-gradient(120deg,#7856d9,#a78bfa)!important;
+  color:white!important;
+  border-radius:18px!important;
+  box-shadow:0 4px 15px #7656d955;
+}
+
+body.winter-theme button.secondary {
+  background:rgba(76,88,140,.55)!important;
+  border:1px solid #7784bd!important;
+}
+
+body.winter-theme button.danger {
+  background:#9e405e!important;
+}
+
+body.winter-theme .entry,
+body.winter-theme .providerLine {
+  border-color:#495276!important;
+}
+
+body.winter-theme .errorModal {
+  background:#202747!important;
+  border-color:#7885c5!important;
+}
+
+#winterToggle {
+  width:auto;
+  min-width:48px;
+  margin:0;
+  padding:10px 15px;
+  border-radius:50px;
+  font-size:14px;
+  white-space:nowrap;
+}
+
+@media(prefers-reduced-motion:reduce) {
+  body.winter-theme::before {animation:none}
+}
+</style>
+
+<script>
+(() => {
+  const key = "chatly_winter_theme";
+  const header = document.querySelector("header");
+  if (!header) return;
+
+  const toggle = document.createElement("button");
+  toggle.id = "winterToggle";
+  toggle.type = "button";
+  toggle.className = "secondary";
+  toggle.setAttribute("aria-pressed", "false");
+
+  const saved = localStorage.getItem(key) === "on";
+
+  function applyWinter(enabled) {
+    document.body.classList.toggle("winter-theme", enabled);
+    toggle.textContent = enabled ? "❄️ Зима: Вкл." : "❄️ Зима: Выкл.";
+    toggle.setAttribute("aria-pressed", String(enabled));
+    localStorage.setItem(key, enabled ? "on" : "off");
+  }
+
+  toggle.addEventListener("click", () => {
+    applyWinter(!document.body.classList.contains("winter-theme"));
+  });
+
+  const logout = document.getElementById("logoutBtn");
+  if (logout) header.insertBefore(toggle, logout);
+  else header.appendChild(toggle);
+
+  applyWinter(saved);
+})();
+</script>
+
 </body>
 </html>
