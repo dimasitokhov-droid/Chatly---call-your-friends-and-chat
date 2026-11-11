@@ -515,8 +515,61 @@
     }
 
     
+
 async function sendText(event) {
   event.preventDefault();
+
+  if (accessBlocked || ownBanned || targetBanned) {
+    notice("Отправка сообщений недоступна: аккаунт заблокирован.", true);
+    return;
+  }
+
+  const text = inputEl.value.trim();
+
+  if (!text || !chatId || busy) return;
+
+  busy = true;
+  sendBtn.disabled = true;
+  notice("");
+
+  try {
+    const options = getMessageOptions();
+
+    const messageData = {
+      type: "text",
+      text: text,
+      uid: currentUser.uid,
+      effect: options.effect,
+      createdAt: serverTimestamp()
+    };
+
+    if (options.expiresAt) {
+      messageData.expiresAt = options.expiresAt;
+    }
+
+    await addDoc(
+      collection(db, "chats", chatId, "messages"),
+      messageData
+    );
+
+    inputEl.value = "";
+
+  } catch (error) {
+    explainError(error);
+
+  } finally {
+    busy = false;
+
+    if (!accessBlocked) {
+      sendBtn.disabled = false;
+    }
+
+    inputEl.focus();
+  }
+}
+
+async function sendImage(file) {
+
 
   if (accessBlocked || ownBanned || targetBanned) {
     notice("Отправка сообщений недоступна: аккаунт заблокирован.", true);
