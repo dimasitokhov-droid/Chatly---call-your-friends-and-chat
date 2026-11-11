@@ -71,6 +71,11 @@ button:disabled{opacity:.55;cursor:wait;transform:none}
 .secondary{background:var(--surface-high);color:var(--text);border:1px solid var(--outline);box-shadow:none}
 .danger{background:#93000a;color:#ffdad6}
 .hidden{display:none!important}
+#adminPanel.hidden{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
 .muted{color:#aaa5b2;font-size:13px;overflow-wrap:anywhere}
 .entry{
   display:flex;align-items:center;justify-content:space-between;gap:12px;
