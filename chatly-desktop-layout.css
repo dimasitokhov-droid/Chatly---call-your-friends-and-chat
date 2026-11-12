@@ -1,0 +1,197 @@
+/* Chatly — адаптивная боковая панель в стиле TikTok Desktop
+   Подключается отдельно. Существующий Firebase-код не меняет. */
+
+#chatlyDesktopSidebar {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  body {
+    display: grid;
+    grid-template-columns: 248px minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    min-height: 100vh;
+    align-items: start;
+  }
+
+  body > header {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    min-width: 0;
+  }
+
+  #chatlyDesktopSidebar {
+    display: flex;
+    grid-column: 1;
+    grid-row: 2;
+    position: sticky;
+    top: 78px;
+    align-self: start;
+    flex-direction: column;
+    gap: 8px;
+    width: 248px;
+    max-height: calc(100vh - 90px);
+    overflow-y: auto;
+    padding: 22px 14px;
+    margin: 0;
+    border-right: 1px solid #303b55;
+    background: rgba(23, 31, 48, .96);
+    z-index: 5;
+  }
+
+  body.winter-theme #chatlyDesktopSidebar {
+    background: rgba(17, 23, 49, .94);
+    border-right-color: rgba(172, 190, 255, .35);
+    backdrop-filter: blur(16px);
+  }
+
+  .chatly-sidebar-brand {
+    padding: 8px 12px 18px;
+    color: #c5a5ff;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -.5px;
+    text-shadow: 0 0 18px #9475ff55;
+  }
+
+  .chatly-sidebar-caption {
+    padding: 10px 12px 5px;
+    color: #9da9c5;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .chatly-sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    width: 100%;
+    min-height: 48px;
+    margin: 0;
+    padding: 10px 14px;
+    border: 1px solid transparent;
+    border-radius: 15px;
+    background: transparent;
+    color: #e9e8f4;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: none;
+    transition: background .18s ease, border-color .18s ease, transform .18s ease;
+  }
+
+  .chatly-sidebar-link:hover {
+    background: #303b55;
+    border-color: #536184;
+    filter: none;
+  }
+
+  .chatly-sidebar-link:active {
+    transform: scale(.98);
+  }
+
+  body.winter-theme .chatly-sidebar-link {
+    background: transparent !important;
+    color: #eeeaff !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  body.winter-theme .chatly-sidebar-link:hover,
+  body.winter-theme .chatly-sidebar-link.is-active {
+    background: rgba(125, 105, 205, .24) !important;
+    border-color: rgba(180, 165, 255, .32) !important;
+  }
+
+  .chatly-sidebar-link.is-active {
+    background: #303b55;
+    border-color: #536184;
+    color: #ffffff;
+  }
+
+  .chatly-sidebar-icon {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    flex: 0 0 24px;
+    font-size: 20px;
+  }
+
+  body > main {
+    grid-column: 2;
+    grid-row: 2;
+    width: min(100% - 48px, 1120px);
+    margin: 26px auto 48px;
+    min-width: 0;
+  }
+
+  body > main > #appPanel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 18px;
+  }
+
+  body > main > #appPanel > .panel,
+  body > main > #appPanel > #accountOptionsPanel,
+  body > main > #appPanel > #profileSetupPanel {
+    min-width: 0;
+    margin: 0;
+  }
+
+  body > main > #appPanel > #adminPanel {
+    grid-column: 1 / -1;
+  }
+
+  body > main > #appPanel > .profile-required:first-child {
+    grid-column: 1 / -1;
+  }
+
+  body > main > #authPanel {
+    max-width: 560px;
+    margin: 30px auto;
+  }
+
+  body.winter-theme > header {
+    box-shadow: 0 8px 28px #05081755;
+  }
+}
+
+@media (min-width: 1300px) {
+  body {
+    grid-template-columns: 270px minmax(0, 1fr);
+  }
+
+  #chatlyDesktopSidebar {
+    width: 270px;
+    padding-inline: 18px;
+  }
+
+  body > main {
+    width: min(100% - 72px, 1220px);
+  }
+}
+
+/* На телефонах и небольших планшетах оставляем прежнюю компоновку. */
+@media (max-width: 899px) {
+  #chatlyDesktopSidebar {
+    display: none !important;
+  }
+
+  body > main {
+    width: min(650px, 94%);
+    margin: 25px auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chatly-sidebar-link {
+    transition: none !important;
+  }
+}
