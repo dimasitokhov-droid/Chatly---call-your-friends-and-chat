@@ -1,60 +1,107 @@
-/* Chatly Desktop Sidebar — создаёт навигацию только на широком экране.
-   Не обращается к Firebase и не меняет существующие обработчики. */
-(() => {
-  if (document.getElementById("chatlyDesktopSidebar")) return;
 
-  const navItems = [
-    { icon: "⌂", label: "Главная", selector: "#appPanel > .profile-required:first-child" },
-    { icon: "⌕", label: "Найти пользователя", selector: "#searchUsername" },
-    { icon: "◷", label: "Недавние", selector: "#recentUsersList" },
-    { icon: "⚙", label: "Дополнительно", selector: "#accountOptionsPanel" },
-    { icon: "🔔", label: "Уведомления", selector: "#notificationStatus" },
-    { icon: "🔵", label: "Верификация", selector: "#verificationBtn" }
+/* Chatly Mobile Navigation — FIX 2 */
+(() => {
+  const mq = window.matchMedia("(max-width: 899px)");
+  const NAV_ID = "chatly-mobile-nav";
+
+  function goTo(id, focus = false) {
+    const element = document.getElementById(id);
+
+    if (!element) {
+      console.warn("Chatly navigation: element not found:", id);
+      return;
+    }
+
+    element.scrollIntoView({
+      behavior: "smooth",
+      block: "center"
+    });
+
+    if (focus) {
+      setTimeout(() => element.focus(), 400);
+    }
+  }
+
+  function goSearch() {
+    goTo("searchUsername", true);
+  }
+
+  function goRecent() {
+    goTo("recentUsersList");
+  }
+
+  function goNotifications() {
+    goTo("notificationStatus");
+  }
+
+  function goProfile() {
+    const target =
+      document.getElementById("accountOptionsPanel") ||
+      document.getElementById("profileSetupPanel");
+
+    if (target) {
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    }
+  }
+
+  const items = [
+    ["Главная", "⌂", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }],
+    ["Поиск", "⌕", goSearch],
+    ["Недавние", "◷", goRecent],
+    ["Уведомления", "♧", goNotifications],
+    ["Профиль", "☻", goProfile]
   ];
 
-  const sidebar = document.createElement("aside");
-  sidebar.id = "chatlyDesktopSidebar";
-  sidebar.setAttribute("aria-label", "Навигация Chatly");
+  function createNavigation() {
+    document.getElementById(NAV_ID)?.remove();
 
-  const brand = document.createElement("div");
-  brand.className = "chatly-sidebar-brand";
-  brand.textContent = "Chatly 💬";
-  sidebar.append(brand);
+    if (!mq.matches) return;
 
-  const caption = document.createElement("div");
-  caption.className = "chatly-sidebar-caption";
-  caption.textContent = "Меню";
-  sidebar.append(caption);
+    const nav = document.createElement("nav");
+    nav.id = NAV_ID;
+    nav.className = "chatly-mobile-nav";
 
-  const buttons = [];
+    items.forEach(([label, icon, action], index) => {
+      const button = document.createElement("button");
+      button.type = "button";
 
-  navItems.forEach((item, index) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "chatly-sidebar-link" + (index === 0 ? " is-active" : "");
-    button.innerHTML = `<span class="chatly-sidebar-icon" aria-hidden="true">${item.icon}</span><span></span>`;
-    button.querySelector("span:last-child").textContent = item.label;
-    button.addEventListener("click", () => {
-      const target = document.querySelector(item.selector);
-      if (!target) return;
+      button.innerHTML = `
+        <span class="nav-icon">${icon}</span>
+        <span class="nav-label">${label}</span>
+      `;
 
-      const section = target.closest(".panel") || target;
-      if (section.classList.contains("hidden")) {
-        // Разделы с ограниченным доступом не раскрываем навигацией.
-        return;
-      }
+      if (index === 0) button.classList.add("active");
 
-      section.scrollIntoView({ behavior: "smooth", block: "start" });
-      buttons.forEach(x => x.classList.remove("is-active"));
-      button.classList.add("is-active");
+      button.addEventListener("click", () => {
+        action();
+
+        nav.querySelectorAll("button").forEach(item => {
+          item.classList.remove("active");
+        });
+
+        button.classList.add("active");
+      });
+
+      nav.appendChild(button);
     });
-    buttons.push(button);
-    sidebar.append(button);
-  });
 
-  const header = document.querySelector("body > header");
-  const main = document.querySelector("body > main");
-  if (header && main) {
-    main.before(sidebar);
+    document.body.appendChild(nav);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", createNavigation);
+  } else {
+    createNavigation();
+  }
+
+  if (mq.addEventListener) {
+    mq.addEventListener("change", createNavigation);
+  } else {
+    window.addEventListener("resize", createNavigation);
   }
 })();
