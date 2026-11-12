@@ -1,0 +1,113 @@
+/* Chatly — мобильная навигация в стиле TikTok.
+   Подключать ПОСЛЕ остальных CSS. Компьютерную версию не меняет. */
+@media (max-width: 899px) {
+  body {
+    padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body > header {
+    min-height: 66px;
+    padding: 12px 14px !important;
+    gap: 10px !important;
+    flex-wrap: wrap;
+  }
+
+  body > header h1,
+  body > header .logo {
+    font-size: clamp(23px, 6vw, 30px) !important;
+  }
+
+  body > header button {
+    min-height: 42px;
+    padding: 9px 14px !important;
+    border-radius: 18px !important;
+    font-size: 14px !important;
+  }
+
+  body > main {
+    width: min(100% - 20px, 680px) !important;
+    margin: 14px auto 24px !important;
+    padding: 0 !important;
+  }
+
+  body > main section,
+  body > main .card,
+  body > main [class*="card"],
+  body > main [class*="panel"] {
+    border-radius: 23px !important;
+  }
+
+  body > main section,
+  body > main .card,
+  body > main [class*="card"] {
+    padding: 17px !important;
+    margin-bottom: 14px !important;
+  }
+
+  body > main h2 {
+    font-size: clamp(20px, 5.5vw, 25px) !important;
+    line-height: 1.25;
+  }
+
+  body > main p {
+    line-height: 1.45;
+  }
+
+  .chatly-mobile-nav {
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
+    padding: 8px 7px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: rgba(20, 22, 34, .94);
+    border-top: 1px solid rgba(190, 190, 255, .25);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    box-shadow: 0 -8px 28px rgba(0, 0, 0, .25);
+  }
+
+  .chatly-mobile-nav button {
+    min-width: 0;
+    min-height: 52px;
+    border: 0;
+    border-radius: 16px;
+    background: transparent;
+    color: #c8c9dc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .chatly-mobile-nav button .nav-icon {
+    font-size: 20px;
+    line-height: 1.1;
+  }
+
+  .chatly-mobile-nav button .nav-label {
+    font-size: 10px;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .chatly-mobile-nav button.active {
+    color: #f1eaff;
+    background: rgba(208, 188, 255, .18);
+  }
+
+  .chatly-mobile-nav button:active {
+    transform: scale(.96);
+  }
+}
+
+@media (min-width: 900px) {
+  .chatly-mobile-nav { display: none !important; }
+}
