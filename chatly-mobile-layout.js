@@ -1,119 +1,91 @@
 
-/* Chatly Mobile Navigation — FIX */
+/* Chatly Mobile Navigation — точная привязка к разделам */
 (() => {
-  const mobile = window.matchMedia("(max-width: 899px)");
+  const mq = window.matchMedia("(max-width: 899px)");
   const NAV_ID = "chatly-mobile-nav";
 
-  function getMain() {
-    return document.querySelector("body > main") ||
-           document.querySelector("main") ||
-           document.body;
-  }
+  function findSection(exactText) {
+    const elements = document.querySelectorAll(
+      "h1, h2, h3, h4"
+    );
 
-  function scrollTo(el, focus = false) {
-    if (!el) {
-      alert("Раздел пока не найден на странице.");
-      return;
-    }
+    for (const el of elements) {
+      const text = (el.textContent || "")
+        .trim()
+        .toLowerCase();
 
-    const target = el.closest("section, article") || el;
-
-    target.scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
-
-    if (focus) {
-      setTimeout(() => el.focus(), 400);
-    }
-  }
-
-  function findHeading(words) {
-    const headings = getMain().querySelectorAll("h1,h2,h3,h4");
-
-    for (const heading of headings) {
-      const text = heading.textContent.toLowerCase();
-
-      if (words.some(word => text.includes(word))) {
-        return heading;
+      if (text.includes(exactText.toLowerCase())) {
+        return el.closest("section, article, .card") ||
+               el.parentElement?.parentElement ||
+               el;
       }
     }
 
     return null;
   }
 
-  function search() {
-    const inputs = getMain().querySelectorAll(
-      'input:not([type="hidden"]), textarea'
-    );
-
-    for (const input of inputs) {
-      const hint = (
-        input.placeholder + " " +
-        input.getAttribute("aria-label")
-      ).toLowerCase();
-
-      if (/поиск|польз|ник|найти|username/.test(hint)) {
-        scrollTo(input, true);
-        return;
-      }
+  function goTo(element) {
+    if (!element) {
+      console.warn("Chatly: раздел не найден");
+      return;
     }
 
-    scrollTo(findHeading(["найти", "поиск"]));
+    element.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
   }
 
-  function recent() {
-    scrollTo(findHeading(["недавние", "история", "последние"]));
-  }
-
-  function notifications() {
-    scrollTo(findHeading(["уведомления", "верификация", "заявки"]));
-  }
-
-  function profile() {
-    const heading = findHeading(["привет"]);
-    if (heading) {
-      scrollTo(heading);
-    } else {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+  const actions = [
+    {
+      name: "Главная",
+      icon: "⌂",
+      run: () => goTo(document.getElementById("appPanel"))
+    },
+    {
+      name: "Поиск",
+      icon: "⌕",
+      run: () => goTo(findSection("Найти пользователя"))
+    },
+    {
+      name: "Недавние",
+      icon: "◷",
+      run: () => goTo(findSection("Недавно введённые ники"))
+    },
+    {
+      name: "Уведомления",
+      icon: "♧",
+      run: () => goTo(findSection("Chatly Guard"))
+    },
+    {
+      name: "Профиль",
+      icon: "☻",
+      run: () => goTo(document.getElementById("appPanel"))
     }
-  }
-
-  const items = [
-    ["Главная", "⌂", () => {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }],
-    ["Поиск", "⌕", search],
-    ["Недавние", "◷", recent],
-    ["Уведомления", "♧", notifications],
-    ["Профиль", "☻", profile]
   ];
 
-  function createNavigation() {
+  function createNav() {
     document.getElementById(NAV_ID)?.remove();
 
-    if (!mobile.matches) return;
+    if (!mq.matches) return;
 
     const nav = document.createElement("nav");
     nav.id = NAV_ID;
     nav.className = "chatly-mobile-nav";
 
-    nav.setAttribute("aria-label", "Навигация Chatly");
-
-    items.forEach(([label, icon, action], index) => {
+    actions.forEach((item, index) => {
       const button = document.createElement("button");
-
       button.type = "button";
 
       button.innerHTML = `
-        <span class="nav-icon">${icon}</span>
-        <span class="nav-label">${label}</span>
+        <span class="nav-icon">${item.icon}</span>
+        <span class="nav-label">${item.name}</span>
       `;
 
       if (index === 0) button.classList.add("active");
 
       button.addEventListener("click", () => {
-        action();
+        item.run();
 
         nav.querySelectorAll("button").forEach(btn => {
           btn.classList.remove("active");
@@ -129,13 +101,10 @@
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener(
-      "DOMContentLoaded",
-      createNavigation
-    );
+    document.addEventListener("DOMContentLoaded", createNav);
   } else {
-    createNavigation();
+    createNav();
   }
 
-  mobile.addEventListener("change", createNavigation);
+  mq.addEventListener("change", createNav);
 })();
