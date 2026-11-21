@@ -1,0 +1,256 @@
+/* Chatly — GTA VI / Vice City chat theme
+   Подключается после встроенных стилей chat.html.
+   Firebase и JavaScript не затрагивает. */
+
+:root {
+  --vice-bg: #100d20;
+  --vice-panel: #1b1530;
+  --vice-panel-2: #292044;
+  --vice-pink: #ff75b7;
+  --vice-pink-strong: #ff4fa3;
+  --vice-purple: #9a68e8;
+  --vice-cyan: #72f1e8;
+  --vice-text: #fff0fa;
+  --vice-muted: #d5bfd7;
+}
+
+body:not(.winter-theme) {
+  background:
+    radial-gradient(ellipse at 12% 0%, #6b286b55 0, transparent 42%),
+    radial-gradient(ellipse at 92% 18%, #174d6650 0, transparent 38%),
+    linear-gradient(155deg, #100d20 0%, #17102c 52%, #101b2c 100%) !important;
+  color: var(--vice-text);
+  font-family: Roboto, "Google Sans", Arial, sans-serif;
+}
+
+body:not(.winter-theme) header,
+body:not(.winter-theme) #composer {
+  background: linear-gradient(100deg, #21142fee, #17172fee) !important;
+  border-color: #ff75b744 !important;
+  box-shadow: 0 8px 30px #08061155;
+  backdrop-filter: blur(16px);
+}
+
+body:not(.winter-theme) header {
+  border-bottom: 1px solid #ff75b744;
+}
+
+body:not(.winter-theme) #composer {
+  border-top: 1px solid #ff75b744;
+}
+
+body:not(.winter-theme) #username {
+  color: #fff0fa;
+  text-shadow: 0 0 12px #ff4fa344;
+}
+
+body:not(.winter-theme) #status {
+  color: var(--vice-cyan);
+}
+
+body:not(.winter-theme) #messages {
+  background:
+    radial-gradient(circle at 18% 18%, #ff75b70b 1px, transparent 2px),
+    radial-gradient(circle at 82% 72%, #72f1e80b 1px, transparent 2px);
+  background-size: 78px 78px;
+}
+
+body:not(.winter-theme) .message {
+  background: linear-gradient(145deg, #302448, #211b37);
+  color: var(--vice-text);
+  border: 1px solid #a85b9a66;
+  border-radius: 18px 18px 18px 7px;
+  box-shadow: 0 7px 22px #08061155, inset 0 1px #ffffff0b;
+  animation: viceMessageIn .28s ease both;
+}
+
+body:not(.winter-theme) .message.mine {
+  background: linear-gradient(125deg, #ff75b7, #bd69dc 62%, #8975f5);
+  color: #28112e;
+  border: 1px solid #ffd1ed88;
+  border-radius: 18px 18px 7px 18px;
+  box-shadow: 0 5px 20px #ff4fa333;
+}
+
+body:not(.winter-theme) .sender {
+  color: var(--vice-cyan);
+}
+
+body:not(.winter-theme) .message.mine .sender {
+  color: #421a48;
+}
+
+body:not(.winter-theme) .time {
+  color: inherit;
+  opacity: .72;
+}
+
+body:not(.winter-theme) #messageInput,
+body:not(.winter-theme) .chat-features select {
+  min-height: 44px;
+  background: #211b37;
+  color: var(--vice-text);
+  border: 1px solid #77518b88;
+  border-radius: 14px;
+  outline: none;
+}
+
+body:not(.winter-theme) #messageInput:focus,
+body:not(.winter-theme) .chat-features select:focus {
+  border-color: var(--vice-pink);
+  box-shadow: 0 0 0 3px #ff75b733, 0 0 18px #ff4fa322;
+}
+
+body:not(.winter-theme) #messageInput::placeholder {
+  color: #bda8c5;
+}
+
+body:not(.winter-theme) button {
+  background: linear-gradient(115deg, #ff75b7, #c16bdb 58%, #8d7bff);
+  color: #28112e;
+  border: 0;
+  box-shadow: 0 4px 16px #ff4fa333;
+  transition: transform .2s ease, filter .2s ease, box-shadow .2s ease;
+}
+
+body:not(.winter-theme) button:hover:not(:disabled) {
+  filter: brightness(1.12) saturate(1.12);
+  box-shadow: 0 6px 22px #ff4fa355;
+}
+
+body:not(.winter-theme) button:active:not(:disabled) {
+  transform: scale(.96);
+}
+
+body:not(.winter-theme) #back,
+body:not(.winter-theme) .tools button,
+body:not(.winter-theme) #muteCall {
+  background: linear-gradient(120deg, #302448, #25213c);
+  color: #f8eaff;
+  border: 1px solid #8e6ca0;
+  box-shadow: none;
+}
+
+body:not(.winter-theme) #send {
+  background: linear-gradient(115deg, #ff75b7, #c16bdb 58%, #8d7bff);
+}
+
+body:not(.winter-theme) #callPanel {
+  background: linear-gradient(145deg, #241a3bea, #19162def);
+  border: 1px solid #a85b9a88;
+  border-radius: 20px;
+  box-shadow: 0 8px 28px #08061166;
+}
+
+body:not(.winter-theme) #callHint {
+  color: var(--vice-muted);
+}
+
+body:not(.winter-theme) #acceptCall {
+  background: linear-gradient(120deg, #43c99a, #238c78);
+  color: #071f1a;
+}
+
+body:not(.winter-theme) #rejectCall,
+body:not(.winter-theme) #hangupCall {
+  background: linear-gradient(120deg, #ff6688, #c52e68);
+  color: #fff0f5;
+}
+
+body:not(.winter-theme) #notice {
+  color: #ffd28b;
+}
+
+body:not(.winter-theme) #notice.blocked,
+body:not(.winter-theme) #status.blocked {
+  color: #ff9aab;
+}
+
+body:not(.winter-theme) .empty {
+  color: var(--vice-muted);
+}
+
+body:not(.winter-theme) .chat-features {
+  color: var(--vice-muted);
+}
+
+body:not(.winter-theme) .chat-features label {
+  color: var(--vice-cyan);
+}
+
+body:not(.winter-theme) .chat-features select option {
+  background: #211b37;
+  color: var(--vice-text);
+}
+
+body:not(.winter-theme) button:focus-visible,
+body:not(.winter-theme) select:focus-visible,
+body:not(.winter-theme) input:focus-visible {
+  outline: 2px solid var(--vice-cyan);
+  outline-offset: 3px;
+}
+
+@keyframes viceMessageIn {
+  from { opacity: 0; transform: translateY(8px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 520px) {
+  body:not(.winter-theme) header {
+    gap: 8px;
+    padding: 11px;
+  }
+
+  body:not(.winter-theme) #callButton {
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  body:not(.winter-theme) #messages {
+    padding: 14px 10px;
+  }
+
+  body:not(.winter-theme) .message {
+    max-width: 88%;
+  }
+
+  body:not(.winter-theme) #composer {
+    padding: 9px;
+  }
+
+  body:not(.winter-theme) .tools {
+    gap: 6px;
+  }
+
+  body:not(.winter-theme) .tools button {
+    min-width: 0;
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+
+  body:not(.winter-theme) .chat-features {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  body:not(.winter-theme) .chat-features label {
+    min-width: 0;
+  }
+
+  body:not(.winter-theme) .chat-features select {
+    width: 100%;
+    margin-top: 5px;
+    padding: 9px 7px;
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:not(.winter-theme) .message,
+  body:not(.winter-theme) button {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
