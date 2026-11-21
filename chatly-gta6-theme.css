@@ -1,0 +1,119 @@
+/* Chatly — GTA VI / Vice City theme
+   Подключать ПОСЛЕ остальных стилей. Исходный pixel-style.css не удалять. */
+:root{
+  --bg:#100d20;
+  --surface:#1b1530;
+  --surface-high:#292044;
+  --surface-low:#151126;
+  --primary:#ff75b7;
+  --on-primary:#32102b;
+  --secondary:#72f1e8;
+  --outline:#75517f;
+  --text:#fff0fa;
+  --muted:#d5bfd7;
+  --radius:28px;
+  --gta-pink:#ff4fa3;
+  --gta-purple:#8d5bdb;
+  --gta-cyan:#59e7e0;
+  --gta-orange:#ffb36b;
+}
+
+/* Фон страницы: закатный неон, без вмешательства в зимний режим */
+body:not(.winter-theme){
+  background:
+    radial-gradient(ellipse at 12% 0%,#6b286b55 0,transparent 42%),
+    radial-gradient(ellipse at 92% 18%,#174d6650 0,transparent 38%),
+    linear-gradient(155deg,#100d20 0%,#17102c 52%,#101b2c 100%) !important;
+  color:var(--text);
+}
+header{
+  background:linear-gradient(100deg,#21142fee,#17172fee) !important;
+  border-bottom:1px solid #ff75b744 !important;
+  box-shadow:0 8px 30px #08061155;
+  backdrop-filter:blur(16px);
+}
+.logo{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  color:#ff8bc5 !important;
+  text-shadow:0 0 12px #ff4fa366,0 0 28px #a45bff55;
+  letter-spacing:-1px;
+}
+.gta-mark{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:42px;
+  height:34px;
+  padding:0 7px;
+  border:2px solid #72f1e8;
+  border-radius:9px 14px 8px 13px;
+  color:#fff1a8;
+  background:linear-gradient(135deg,#ff4fa3,#8d5bdb 58%,#28bfc7);
+  box-shadow:0 0 10px #ff4fa366, inset 0 0 8px #ffffff30;
+  font-size:19px;
+  font-weight:900;
+  font-style:italic;
+  letter-spacing:-2px;
+  transform:skew(-7deg);
+}
+.panel{
+  background:linear-gradient(145deg,#241a3bea,#19162deF) !important;
+  border:1px solid #a85b9a66 !important;
+  box-shadow:0 8px 28px #08061166, inset 0 1px #ffffff0b !important;
+  backdrop-filter:blur(12px);
+}
+h1,h2,h3{color:#fff0fa}
+p,.muted{color:var(--muted)}
+input{
+  background:#211b37 !important;
+  color:#fff0fa !important;
+  border:1px solid #77518b66 !important;
+}
+input:focus{
+  border-color:#ff75b7 !important;
+  box-shadow:0 0 0 3px #ff75b733,0 0 18px #ff4fa322 !important;
+}
+input::placeholder{color:#bda8c5 !important}
+button{
+  background:linear-gradient(115deg,#ff75b7,#c16bdb 58%,#8d7bff) !important;
+  color:#28112e !important;
+  box-shadow:0 4px 16px #ff4fa333 !important;
+}
+button:hover:not(:disabled){
+  filter:brightness(1.12) saturate(1.12);
+  box-shadow:0 6px 22px #ff4fa355 !important;
+}
+button:focus-visible{outline:3px solid #72f1e8 !important}
+button::after{
+  background:radial-gradient(circle,rgba(255,255,255,.62),rgba(255,255,255,.18) 48%,transparent 72%);
+}
+.secondary{
+  background:linear-gradient(120deg,#302448,#25213c) !important;
+  color:#f8eaff !important;
+  border:1px solid #8e6ca0 !important;
+  box-shadow:none !important;
+}
+.danger{
+  background:linear-gradient(120deg,#b92d68,#842c68) !important;
+  color:#fff0f5 !important;
+}
+.entry{border-bottom-color:#69466f !important}
+hr{border-top-color:#69466f !important}
+.verified{background:#268bff}
+.tiktok{background:#24202e;border-color:#72f1e8}
+.youtube{background:#e62167}
+.developer{background:#8755d9}
+#logoutBtn{border:1px solid #ff75b766 !important}
+
+/* Небольшие неоновые акценты при наведении */
+a{color:#72f1e8}
+::selection{background:#ff75b766;color:#fff}
+@media(prefers-reduced-motion:no-preference){
+  .panel{animation:viceCityAppear .42s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes viceCityAppear{
+    from{opacity:0;transform:translateY(10px);filter:blur(3px)}
+    to{opacity:1;transform:translateY(0);filter:blur(0)}
+  }
+}
