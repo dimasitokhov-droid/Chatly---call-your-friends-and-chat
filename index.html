@@ -59,28 +59,41 @@
 </header>
 
 <main>
-  <section id="authPanel" class="panel">
-    <h1>Добро пожаловать в Chatly!</h1>
-    <p>Войди в аккаунт или создай новый, чтобы общаться.</p>
+  
+<section id="authPanel" class="panel">
+  <h1>Добро пожаловать в Chatly! 💜</h1>
+  <p>Для использования мессенджера войди через единый аккаунт Chatly ID.</p>
+
+  <button id="chatlyIdBtn" onclick="window.open('https://dimasitokhov-droid.github.io/chatly-id/','_blank')">
+    🔐 Войти через Chatly ID
+  </button>
+
+  <button class="secondary" onclick="location.reload()">
+    Я уже вошёл — проверить
+  </button>
+
+  <p id="authStatus" class="status" role="status" aria-live="polite">
+    После входа в Chatly ID вернись на эту вкладку и нажми «Я уже вошёл — проверить».
+  </p>
+
+  <!-- Скрытые старые элементы: нужны для совместимости с текущим JavaScript -->
+  <div class="hidden" aria-hidden="true">
     <div id="registerFields">
-      <input id="username" placeholder="Имя пользователя" maxlength="20" autocomplete="username">
-      <p class="muted">3–20 символов: латинские буквы, цифры или _.</p>
+      <input id="username">
     </div>
-    <input id="email" type="email" placeholder="Email" autocomplete="email">
-    <input id="password" type="password" placeholder="Пароль" autocomplete="current-password">
-    <button id="loginBtn">Войти по Email</button>
-    <button id="registerBtn" class="secondary">Создать аккаунт</button>
-    <div class="authDivider">ИЛИ</div>
-   <h3>📱 Вход по номеру телефона</h3>
-<input id="phoneLoginInput" type="tel" placeholder="+371 20000000" autocomplete="tel">
-<div id="loginRecaptcha"></div>
-<button id="sendLoginCodeBtn" class="secondary">Отправить SMS-код</button>
-<input id="loginSmsCode" class="hidden" type="text" inputmode="numeric" placeholder="Код из SMS" maxlength="6" autocomplete="one-time-code">
-<button id="confirmLoginCodeBtn" class="hidden">Подтвердить код</button>
-<p id="phoneLoginStatus" class="status" role="status"></p>
-<button id="googleLoginBtn" class="secondary">🌐 Войти через Google</button>
-<p id="authStatus" class="status" role="status" aria-live="polite"></p>
-      </section>
+    <input id="email">
+    <input id="password">
+    <button id="loginBtn"></button>
+    <button id="registerBtn"></button>
+    <input id="phoneLoginInput">
+    <div id="loginRecaptcha"></div>
+    <button id="sendLoginCodeBtn"></button>
+    <input id="loginSmsCode">
+    <button id="confirmLoginCodeBtn"></button>
+    <p id="phoneLoginStatus"></p>
+    <button id="googleLoginBtn"></button>
+  </div>
+</section>
 
   <div id="appPanel" class="hidden">
     <section class="panel profile-required">
