@@ -208,15 +208,17 @@ import {
   serverTimestamp, setDoc, writeBatch, updateDoc
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
-const firebaseConfig={
-  apiKey:"AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
-  authDomain:"chatly-19613.firebaseapp.com",
-  projectId:"chatly-19613",
-  storageBucket:"chatly-19613.firebasestorage.app",
-  messagingSenderId:"1080401916394",
-  appId:"1:1080401916394:web:815e66c78ced380b4c8293",
-  measurementId:"G-WJ2NPP9T45"
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXyEiiU",
+  authDomain: "chatly-19613.firebaseapp.com",
+  projectId: "chatly-19613",
+  storageBucket: "chatly-19613.firebasestorage.app",
+  messagingSenderId: "1080401916394",
+  appId: "1:1080401916394:web:a7fb0c1c5807d0744c8293",
+  measurementId: "G-N7J83W8FK7"
 };
+
 const ADMIN_UID="71glZGFXSrYum2HdrgG7wOENrC72";
 const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);
