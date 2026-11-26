@@ -7,7 +7,8 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <title>Chatly – чаты и сообщения</title>
   <link rel="stylesheet" href="./pixel-style.css">
-   <link rel="stylesheet" href="./chatly-desktop-layout.css">
+  <link rel="stylesheet" href="./chatly-desktop-layout.css">
+  <link rel="stylesheet" href="./chatly-gta6-theme.css">
 
   <style>
     *{box-sizing:border-box}
@@ -48,142 +49,129 @@
     .authDivider:before,.authDivider:after{content:"";height:1px;background:#3a4762;flex:1}
     .providerLine{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #303b55}
     .providerLine:last-child{border-bottom:0}
+    .chatly-loader{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;background:#101522;color:#f5f7ff;transition:opacity .35s ease,visibility .35s ease}
+    .chatly-loader.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
+    .loader-logo{font-size:30px;font-weight:800;color:#9aa9ff}
+    .loader-spinner{width:36px;height:36px;border:3px solid #303b55;border-top-color:#9aa9ff;border-radius:50%;animation:chatlySpin .8s linear infinite}
+    @keyframes chatlySpin{to{transform:rotate(360deg)}}
     @media(max-width:420px){.panel{padding:15px}.entry{align-items:flex-start}.entry button{min-width:85px}.badgeControls{grid-template-columns:1fr}}
+    @media(prefers-reduced-motion:reduce){.loader-spinner{animation:none}}
   </style>
 </head>
-<link rel="stylesheet" href="./chatly-gta6-theme.css">
 <body>
+<div id="chatlyLoader" class="chatly-loader">
+  <div class="loader-logo">Chatly 💜</div>
+  <div class="loader-spinner"></div>
+  <p>Проверяем аккаунт…</p>
+</div>
 <header>
   <div class="logo">Chatly <span class="gta-mark">VI</span></div>
   <button id="logoutBtn" class="secondary hidden" style="width:auto;margin:0">Выйти</button>
 </header>
 
 <main>
-  
 <section id="authPanel" class="panel">
   <h1>Добро пожаловать в Chatly! 💜</h1>
   <p>Для использования мессенджера войди через единый аккаунт Chatly ID.</p>
-
-  <button id="chatlyIdBtn" onclick="window.open('https://dimasitokhov-droid.github.io/chatly-id/','_blank')">
+  <button id="chatlyIdBtn" onclick="location.href='https://dimasitokhov-droid.github.io/chatly-id/?returnUrl='+encodeURIComponent(location.href)">
     🔐 Войти через Chatly ID
   </button>
-
-  <button class="secondary" onclick="location.reload()">
-    Я уже вошёл — проверить
-  </button>
-
+  <button class="secondary" onclick="location.reload()">Я уже вошёл — проверить</button>
   <p id="authStatus" class="status" role="status" aria-live="polite">
-    После входа в Chatly ID вернись на эту вкладку и нажми «Я уже вошёл — проверить».
+    После входа в Chatly ID ты автоматически вернёшься в Chatly.
   </p>
-
   <!-- Скрытые старые элементы: нужны для совместимости с текущим JavaScript -->
   <div class="hidden" aria-hidden="true">
-    <div id="registerFields">
-      <input id="username">
-    </div>
-    <input id="email">
-    <input id="password">
-    <button id="loginBtn"></button>
-    <button id="registerBtn"></button>
-    <input id="phoneLoginInput">
-    <div id="loginRecaptcha"></div>
-    <button id="sendLoginCodeBtn"></button>
-    <input id="loginSmsCode">
-    <button id="confirmLoginCodeBtn"></button>
-    <p id="phoneLoginStatus"></p>
+    <div id="registerFields"><input id="username"></div>
+    <input id="email"><input id="password">
+    <button id="loginBtn"></button><button id="registerBtn"></button>
+    <input id="phoneLoginInput"><div id="loginRecaptcha"></div>
+    <button id="sendLoginCodeBtn"></button><input id="loginSmsCode">
+    <button id="confirmLoginCodeBtn"></button><p id="phoneLoginStatus"></p>
     <button id="googleLoginBtn"></button>
   </div>
 </section>
 
-  <div id="appPanel" class="hidden">
-    <section class="panel profile-required">
-      <h1>Привет, <span id="myUsername"></span>! 👋</h1>
-      <p>Ищи пользователей и начинай переписку без заявок в друзья.</p>
-    </section>
-
-    <section id="accountOptionsPanel" class="panel hidden">
-      <h2>⚙️ Дополнительно</h2>
-      <p>Привяжи Google или номер телефона к этому аккаунту Chatly.</p>
-      <div id="linkedMethods"></div>
-      <button id="linkGoogleBtn" class="secondary">🌐 Привязать Google</button>
-      <h3>📱 Привязать номер телефона</h3>
-      <input id="linkPhoneInput" type="tel" placeholder="+371 20000000" autocomplete="tel">
-      <div id="linkRecaptcha"></div>
-      <button id="sendLinkCodeBtn" class="secondary">Отправить SMS для привязки</button>
-      <input id="linkSmsCode" class="hidden" type="text" inputmode="numeric" maxlength="6" placeholder="Код из SMS" autocomplete="one-time-code">
-      <button id="confirmLinkCodeBtn" class="hidden">Подтвердить привязку телефона</button>
-      <p id="linkStatus" class="status" role="status"></p>
-      <p class="muted">Нельзя отвязать последний способ входа. Если Google или телефон уже принадлежат другому аккаунту Firebase, потребуется войти в тот аккаунт отдельно — автоматического объединения аккаунтов нет.</p>
-    </section>
-
-    <section id="profileSetupPanel" class="panel hidden">
-      <h2>Создание профиля Chatly</h2>
-      <p>Выбери уникальный ник, чтобы другие пользователи могли тебя найти.</p>
-      <input id="newProfileUsername" maxlength="20" placeholder="Имя пользователя" autocomplete="username">
-      <button id="createProfileBtn">Создать профиль</button>
-      <p id="profileSetupStatus" class="status" role="status"></p>
-    </section>
-
-    <section class="panel profile-required">
-      <h2>🛡️ Chatly Guard</h2>
-      <p>Настройки уведомлений и защита твоего опыта использования Chatly.</p>
-      <p id="notificationStatus" class="status">Проверяем поддержку уведомлений…</p>
-      <button id="enableNotificationsBtn">🔔 Разрешить уведомления</button>
-      <button id="testNotificationBtn" class="secondary">Проверить уведомление</button>
-      <p class="muted">Уведомления отправляются браузером. Чтобы получать их, когда сайт закрыт, потребуется дополнительная настройка push-уведомлений.</p>
-    </section>
-
-    <section class="panel profile-required">
-      <h2>🔵 Верификация профиля</h2>
-      <p>Подай заявку на синюю галочку. Решение принимает администратор Chatly.</p>
-      <button id="verificationBtn">Подать заявку</button>
-      <p id="verificationStatus" class="status" role="status"></p>
-    </section>
-
-    <section id="adminPanel" class="panel hidden">
-      <h2>🛡️ Панель администратора</h2>
-      <h3>Управление бейджами</h3>
-      <p>Введи ник пользователя без символа @, затем выбери действие.</p>
-      <input id="adminUsernameInput" placeholder="Имя пользователя" maxlength="20" autocomplete="off">
-      <div class="badgeControls">
-        <button id="giveVerified">🔵 Выдать галочку</button><button id="removeVerified" class="danger">Снять галочку</button>
-        <button id="giveTiktok" class="secondary">🎵 Выдать TikTok</button><button id="removeTiktok" class="danger">Снять TikTok</button>
-        <button id="giveYoutube" class="secondary">▶️ Выдать YouTube</button><button id="removeYoutube" class="danger">Снять YouTube</button>
-        <button id="giveDeveloper" class="secondary">💻 Выдать разработчика</button><button id="removeDeveloper" class="danger">Снять разработчика</button>
-      </div>
-      <p id="badgeAdminStatus" class="status" role="status"></p>
-      <hr>
-      <h3>🚫 Блокировка аккаунтов</h3>
-      <p>Введи ник пользователя в поле выше и выбери действие.</p>
-      <div class="badgeControls">
-        <button id="banUserBtn" class="danger">🚫 Заблокировать</button>
-        <button id="unbanUserBtn" class="success">🔓 Разблокировать</button>
-      </div>
-      <div class="banInfo">При блокировке пользователь не сможет пользоваться чатами и звонками. Разблокировка восстановит доступ.</div>
-      <p id="banAdminStatus" class="status" role="status"></p>
-      <hr>
-      <h3>📨 Заявки на синюю галочку</h3>
-      <button id="refreshRequestsBtn" class="secondary">Обновить заявки</button>
-      <div id="verificationRequests"></div>
-      <p id="adminStatus" class="status" role="status"></p>
-    </section>
-
-    <section class="panel profile-required">
-      <h2>🔎 Найти пользователя</h2>
-      <input id="searchUsername" placeholder="Имя пользователя" maxlength="20" autocomplete="off">
-      <button id="searchBtn">Найти</button>
-      <p id="searchStatus" class="status" role="status"></p>
-      <div id="searchResult"></div>
-    </section>
-
-    <section class="panel profile-required">
-      <h2>🕘 Недавно введённые ники</h2>
-      <p>Здесь только пользователи, которых ты искал.</p>
-      <div id="recentUsersList"></div>
-      <p id="recentUsersStatus" class="status">Пока никого нет.</p>
-      <button id="clearRecentBtn" class="secondary">Очистить историю</button>
-    </section>
-  </div>
+<div id="appPanel" class="hidden">
+  <section class="panel profile-required">
+    <h1>Привет, <span id="myUsername"></span>! 👋</h1>
+    <p>Ищи пользователей и начинай переписку без заявок в друзья.</p>
+  </section>
+  <section id="accountOptionsPanel" class="panel hidden">
+    <h2>⚙️ Дополнительно</h2>
+    <p>Привяжи Google или номер телефона к этому аккаунту Chatly.</p>
+    <div id="linkedMethods"></div>
+    <button id="linkGoogleBtn" class="secondary">🌐 Привязать Google</button>
+    <h3>📱 Привязать номер телефона</h3>
+    <input id="linkPhoneInput" type="tel" placeholder="+371 20000000" autocomplete="tel">
+    <div id="linkRecaptcha"></div>
+    <button id="sendLinkCodeBtn" class="secondary">Отправить SMS для привязки</button>
+    <input id="linkSmsCode" class="hidden" type="text" inputmode="numeric" maxlength="6" placeholder="Код из SMS" autocomplete="one-time-code">
+    <button id="confirmLinkCodeBtn" class="hidden">Подтвердить привязку телефона</button>
+    <p id="linkStatus" class="status" role="status"></p>
+    <p class="muted">Нельзя отвязать последний способ входа. Если Google или телефон уже принадлежат другому аккаунту Firebase, потребуется войти в тот аккаунт отдельно — автоматического объединения аккаунтов нет.</p>
+  </section>
+  <section id="profileSetupPanel" class="panel hidden">
+    <h2>Создание профиля Chatly</h2>
+    <p>Выбери уникальный ник, чтобы другие пользователи могли тебя найти.</p>
+    <input id="newProfileUsername" maxlength="20" placeholder="Имя пользователя" autocomplete="username">
+    <button id="createProfileBtn">Создать профиль</button>
+    <p id="profileSetupStatus" class="status" role="status"></p>
+  </section>
+  <section class="panel profile-required">
+    <h2>🛡️ Chatly Guard</h2>
+    <p>Настройки уведомлений и защита твоего опыта использования Chatly.</p>
+    <p id="notificationStatus" class="status">Проверяем поддержку уведомлений…</p>
+    <button id="enableNotificationsBtn">🔔 Разрешить уведомления</button>
+    <button id="testNotificationBtn" class="secondary">Проверить уведомление</button>
+    <p class="muted">Уведомления отправляются браузером. Чтобы получать их, когда сайт закрыт, потребуется дополнительная настройка push-уведомлений.</p>
+  </section>
+  <section class="panel profile-required">
+    <h2>🔵 Верификация профиля</h2>
+    <p>Подай заявку на синюю галочку. Решение принимает администратор Chatly.</p>
+    <button id="verificationBtn">Подать заявку</button>
+    <p id="verificationStatus" class="status" role="status"></p>
+  </section>
+  <section id="adminPanel" class="panel hidden">
+    <h2>🛡️ Панель администратора</h2>
+    <h3>Управление бейджами</h3>
+    <p>Введи ник пользователя без символа @, затем выбери действие.</p>
+    <input id="adminUsernameInput" placeholder="Имя пользователя" maxlength="20" autocomplete="off">
+    <div class="badgeControls">
+      <button id="giveVerified">🔵 Выдать галочку</button><button id="removeVerified" class="danger">Снять галочку</button>
+      <button id="giveTiktok" class="secondary">🎵 Выдать TikTok</button><button id="removeTiktok" class="danger">Снять TikTok</button>
+      <button id="giveYoutube" class="secondary">▶️ Выдать YouTube</button><button id="removeYoutube" class="danger">Снять YouTube</button>
+      <button id="giveDeveloper" class="secondary">💻 Выдать разработчика</button><button id="removeDeveloper" class="danger">Снять разработчика</button>
+    </div>
+    <p id="badgeAdminStatus" class="status" role="status"></p>
+    <hr><h3>🚫 Блокировка аккаунтов</h3>
+    <p>Введи ник пользователя в поле выше и выбери действие.</p>
+    <div class="badgeControls">
+      <button id="banUserBtn" class="danger">🚫 Заблокировать</button>
+      <button id="unbanUserBtn" class="success">🔓 Разблокировать</button>
+    </div>
+    <div class="banInfo">При блокировке пользователь не сможет пользоваться чатами и звонками. Разблокировка восстановит доступ.</div>
+    <p id="banAdminStatus" class="status" role="status"></p>
+    <hr><h3>📨 Заявки на синюю галочку</h3>
+    <button id="refreshRequestsBtn" class="secondary">Обновить заявки</button>
+    <div id="verificationRequests"></div>
+    <p id="adminStatus" class="status" role="status"></p>
+  </section>
+  <section class="panel profile-required">
+    <h2>🔎 Найти пользователя</h2>
+    <input id="searchUsername" placeholder="Имя пользователя" maxlength="20" autocomplete="off">
+    <button id="searchBtn">Найти</button>
+    <p id="searchStatus" class="status" role="status"></p>
+    <div id="searchResult"></div>
+  </section>
+  <section class="panel profile-required">
+    <h2>🕘 Недавно введённые ники</h2>
+    <p>Здесь только пользователи, которых ты искал.</p>
+    <div id="recentUsersList"></div>
+    <p id="recentUsersStatus" class="status">Пока никого нет.</p>
+    <button id="clearRecentBtn" class="secondary">Очистить историю</button>
+  </section>
+</div>
 </main>
 
 <div id="accountErrorModal" class="modalOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="accountErrorTitle" aria-describedby="accountErrorMessage">
@@ -208,9 +196,8 @@ import {
   serverTimestamp, setDoc, writeBatch, updateDoc
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
-
 const firebaseConfig = {
-  apiKey: "AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXyEiiU",
+  apiKey: "AIzaSyD3Er2iVYH6G5vj3YdF6Cj34EJXIXyEiiU",
   authDomain: "chatly-19613.firebaseapp.com",
   projectId: "chatly-19613",
   storageBucket: "chatly-19613.firebasestorage.app",
@@ -224,6 +211,12 @@ const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);
 const db=getFirestore(app);
 const $=id=>document.getElementById(id);
+
+function hideChatlyLoader(){
+  const loader=$("chatlyLoader");
+  if(loader)loader.classList.add("is-hidden");
+}
+setTimeout(hideChatlyLoader,12000);
 
 let authVersion=0,searchVersion=0,recentVersion=0;
 let chatlyServiceWorker=null;
@@ -511,10 +504,7 @@ $("sendLinkCodeBtn").addEventListener("click",async()=>{
   }catch(e){
     console.error("Phone link error:",e);
     $("linkStatus").textContent=(e.code||"Без кода")+": "+errorText(e);
-    if(linkVerifier){
-      try{linkVerifier.clear();}catch{}
-      linkVerifier=null;
-    }
+    if(linkVerifier){try{linkVerifier.clear();}catch{}linkVerifier=null;}
   }
   finally{btn.disabled=false;}
 });
@@ -731,22 +721,38 @@ async function refreshAccountUI(user){
 
 /* ПРОВЕРКА АВТОРИЗАЦИИ */
 onAuthStateChanged(auth,async user=>{
-  const version=++authVersion;searchVersion++;recentVersion++;
-  $("authPanel").classList.toggle("hidden",!!user);
-  $("appPanel").classList.toggle("hidden",!user);
-  $("logoutBtn").classList.toggle("hidden",!user);
-  $("searchResult").replaceChildren();$("searchStatus").textContent="";$("recentUsersList").replaceChildren();
-  $("adminPanel").classList.toggle("hidden",!user||user.uid!==ADMIN_UID);
-  if(!user){
-    setProfileSectionsVisible(false);
-    renderMyName("",{});$("recentUsersStatus").textContent="Войди, чтобы увидеть историю поиска.";
-    $("verificationStatus").textContent="";$("verificationBtn").classList.remove("hidden");
-    $("profileSetupPanel").classList.add("hidden");$("linkedMethods").replaceChildren();return;
-  }
-  updateNotificationStatus();renderMyName(user.displayName||"пользователь",{});
-  $("recentUsersStatus").textContent="Загружаем историю…";$("verificationStatus").textContent="Проверяем статус…";
+  const version=++authVersion;
+  searchVersion++;
+  recentVersion++;
+
   try{
-    const profileSnap=await getDoc(doc(db,"users",user.uid));if(version!==authVersion)return;
+    $("authPanel").classList.toggle("hidden",!!user);
+    $("appPanel").classList.toggle("hidden",!user);
+    $("logoutBtn").classList.toggle("hidden",!user);
+    $("searchResult").replaceChildren();
+    $("searchStatus").textContent="";
+    $("recentUsersList").replaceChildren();
+    $("adminPanel").classList.toggle("hidden",!user||user.uid!==ADMIN_UID);
+
+    if(!user){
+      setProfileSectionsVisible(false);
+      renderMyName("",{});
+      $("recentUsersStatus").textContent="Войди, чтобы увидеть историю поиска.";
+      $("verificationStatus").textContent="";
+      $("verificationBtn").classList.remove("hidden");
+      $("profileSetupPanel").classList.add("hidden");
+      $("linkedMethods").replaceChildren();
+      return;
+    }
+
+    updateNotificationStatus();
+    renderMyName(user.displayName||"пользователь",{});
+    $("recentUsersStatus").textContent="Загружаем историю…";
+    $("verificationStatus").textContent="Проверяем статус…";
+
+    const profileSnap=await getDoc(doc(db,"users",user.uid));
+    if(version!==authVersion)return;
+
     if(!profileSnap.exists()||!profileSnap.data().username){
       setProfileSectionsVisible(false);
       $("profileSetupPanel").classList.remove("hidden");
@@ -754,26 +760,45 @@ onAuthStateChanged(auth,async user=>{
       $("newProfileUsername").value=user.displayName?normalizeUsername(user.displayName).replace(/[^a-z0-9_]/g,"").slice(0,20):"";
       $("recentUsersStatus").textContent="Сначала создай профиль.";
       $("verificationStatus").textContent="Сначала создай профиль.";
-      renderLinkedMethods(user);return;
+      renderLinkedMethods(user);
+      return;
     }
+
     setProfileSectionsVisible(true);
     $("profileSetupPanel").classList.add("hidden");
-    const profile=profileSnap.data();renderMyName(profile.username||user.displayName,profile);renderLinkedMethods(user);
-    if(profile.verified===true){$("verificationStatus").textContent="Твой профиль подтверждён синей галочкой!";$("verificationBtn").classList.add("hidden");}
-    else{
+    const profile=profileSnap.data();
+    renderMyName(profile.username||user.displayName,profile);
+    renderLinkedMethods(user);
+
+    if(profile.verified===true){
+      $("verificationStatus").textContent="Твой профиль подтверждён синей галочкой!";
+      $("verificationBtn").classList.add("hidden");
+    }else{
       $("verificationBtn").classList.remove("hidden");
-      const req=await getDoc(doc(db,"verificationRequests",user.uid));if(version!==authVersion)return;
+      const req=await getDoc(doc(db,"verificationRequests",user.uid));
+      if(version!==authVersion)return;
       if(req.exists()){
-        const labels={pending:"Заявка ожидает рассмотрения.",approved:"Заявка была одобрена ранее, но галочка сейчас снята.",rejected:"Заявка отклонена."};
+        const labels={
+          pending:"Заявка ожидает рассмотрения.",
+          approved:"Заявка была одобрена ранее, но галочка сейчас снята.",
+          rejected:"Заявка отклонена."
+        };
         $("verificationStatus").textContent=labels[req.data().status]||"Статус заявки неизвестен.";
-      }else $("verificationStatus").textContent="У тебя пока нет заявки.";
+      }else{
+        $("verificationStatus").textContent="У тебя пока нет заявки.";
+      }
     }
-    await renderRecent();if(version!==authVersion)return;
+
+    await renderRecent();
+    if(version!==authVersion)return;
     if(user.uid===ADMIN_UID)await loadRequests();
+
   }catch(e){
     if(version!==authVersion)return;
     $("recentUsersStatus").textContent="Не удалось загрузить профиль: "+errorText(e);
     $("verificationStatus").textContent=errorText(e);
+  }finally{
+    if(version===authVersion)hideChatlyLoader();
   }
 });
 </script>
@@ -789,14 +814,8 @@ body.winter-theme {
     linear-gradient(180deg,#090e22,#11152e 65%,#25204b)!important;
   background-attachment:fixed!important;
 }
-
 body.winter-theme::before {
-  content:"";
-  position:fixed;
-  inset:0;
-  z-index:0;
-  pointer-events:none;
-  opacity:.55;
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.55;
   background-image:
     radial-gradient(3px 3px at 10% 20%,#fff 45%,transparent 55%),
     radial-gradient(2px 2px at 30% 70%,#dce5ff 45%,transparent 55%),
@@ -805,261 +824,85 @@ body.winter-theme::before {
   background-size:190px 190px,240px 240px,300px 300px,220px 220px;
   animation:winterSnow 18s linear infinite;
 }
-
-@keyframes winterSnow {
-  from {background-position:0 0,0 0,0 0,0 0}
-  to {background-position:0 380px,0 480px,0 600px,0 440px}
-}
-
-body.winter-theme header {
-  position:relative;
-  z-index:1;
-  background:rgba(17,23,49,.88)!important;
-  border-bottom:1px solid var(--winter-border)!important;
-  backdrop-filter:blur(16px);
-}
-
-body.winter-theme .logo {
-  color:#c5a5ff!important;
-  text-shadow:0 0 18px #9475ff88;
-}
-
-body.winter-theme main {
-  position:relative;
-  z-index:1;
-}
-
-body.winter-theme .panel {
-  background:var(--winter-card)!important;
-  border:1px solid var(--winter-border)!important;
-  border-radius:26px!important;
-  box-shadow:0 8px 30px #0005,0 0 18px #8d83ff18;
-  backdrop-filter:blur(14px);
-}
-
-body.winter-theme h1,
-body.winter-theme h2,
-body.winter-theme h3 {
-  color:#f1edff;
-}
-
-body.winter-theme p,
-body.winter-theme .muted {
-  color:#c4c9e9;
-}
-
-body.winter-theme input {
-  background:#101832!important;
-  border:1px solid #58618e!important;
-  color:white!important;
-  border-radius:16px!important;
-}
-
-body.winter-theme button {
-  background:linear-gradient(120deg,#7856d9,#a78bfa)!important;
-  color:white!important;
-  border-radius:18px!important;
-  box-shadow:0 4px 15px #7656d955;
-}
-
-body.winter-theme button.secondary {
-  background:rgba(76,88,140,.55)!important;
-  border:1px solid #7784bd!important;
-}
-
-body.winter-theme button.danger {
-  background:#9e405e!important;
-}
-
-body.winter-theme .entry,
-body.winter-theme .providerLine {
-  border-color:#495276!important;
-}
-
-body.winter-theme .errorModal {
-  background:#202747!important;
-  border-color:#7885c5!important;
-}
-
-#winterToggle {
-  width:auto;
-  min-width:48px;
-  margin:0;
-  padding:10px 15px;
-  border-radius:50px;
-  font-size:14px;
-  white-space:nowrap;
-}
-
-@media(prefers-reduced-motion:reduce) {
-  body.winter-theme::before {animation:none}
-}
+@keyframes winterSnow {from{background-position:0 0,0 0,0 0,0 0}to{background-position:0 380px,0 480px,0 600px,0 440px}}
+body.winter-theme header{position:relative;z-index:1;background:rgba(17,23,49,.88)!important;border-bottom:1px solid var(--winter-border)!important;backdrop-filter:blur(16px)}
+body.winter-theme .logo{color:#c5a5ff!important;text-shadow:0 0 18px #9475ff88}
+body.winter-theme main{position:relative;z-index:1}
+body.winter-theme .panel{background:var(--winter-card)!important;border:1px solid var(--winter-border)!important;border-radius:26px!important;box-shadow:0 8px 30px #0005,0 0 18px #8d83ff18;backdrop-filter:blur(14px)}
+body.winter-theme h1,body.winter-theme h2,body.winter-theme h3{color:#f1edff}
+body.winter-theme p,body.winter-theme .muted{color:#c4c9e9}
+body.winter-theme input{background:#101832!important;border:1px solid #58618e!important;color:white!important;border-radius:16px!important}
+body.winter-theme button{background:linear-gradient(120deg,#7856d9,#a78bfa)!important;color:white!important;border-radius:18px!important;box-shadow:0 4px 15px #7656d955}
+body.winter-theme button.secondary{background:rgba(76,88,140,.55)!important;border:1px solid #7784bd!important}
+body.winter-theme button.danger{background:#9e405e!important}
+body.winter-theme .entry,body.winter-theme .providerLine{border-color:#495276!important}
+body.winter-theme .errorModal{background:#202747!important;border-color:#7885c5!important}
+#winterToggle{width:auto;min-width:48px;margin:0;padding:10px 15px;border-radius:50px;font-size:14px;white-space:nowrap}
+@media(prefers-reduced-motion:reduce){body.winter-theme::before{animation:none}}
 </style>
 
 <script>
 (() => {
-  const key = "chatly_winter_theme";
-  const header = document.querySelector("header");
-  if (!header) return;
-
-  const toggle = document.createElement("button");
-  toggle.id = "winterToggle";
-  toggle.type = "button";
-  toggle.className = "secondary";
-  toggle.setAttribute("aria-pressed", "false");
-
-  const saved = localStorage.getItem(key) === "on";
-
-  function applyWinter(enabled) {
-    document.body.classList.toggle("winter-theme", enabled);
-    toggle.textContent = enabled ? "❄️ Зима: Вкл." : "❄️ Зима: Выкл.";
-    toggle.setAttribute("aria-pressed", String(enabled));
-    localStorage.setItem(key, enabled ? "on" : "off");
+  const key="chatly_winter_theme";
+  const header=document.querySelector("header");
+  if(!header)return;
+  const toggle=document.createElement("button");
+  toggle.id="winterToggle";toggle.type="button";toggle.className="secondary";
+  toggle.setAttribute("aria-pressed","false");
+  const saved=localStorage.getItem(key)==="on";
+  function applyWinter(enabled){
+    document.body.classList.toggle("winter-theme",enabled);
+    toggle.textContent=enabled?"❄️ Зима: Вкл.":"❄️ Зима: Выкл.";
+    toggle.setAttribute("aria-pressed",String(enabled));
+    localStorage.setItem(key,enabled?"on":"off");
   }
-
-  toggle.addEventListener("click", () => {
-    applyWinter(!document.body.classList.contains("winter-theme"));
-  });
-
-  const logout = document.getElementById("logoutBtn");
-  if (logout) header.insertBefore(toggle, logout);
-  else header.appendChild(toggle);
-
+  toggle.addEventListener("click",()=>applyWinter(!document.body.classList.contains("winter-theme")));
+  const logout=document.getElementById("logoutBtn");
+  if(logout)header.insertBefore(toggle,logout);else header.appendChild(toggle);
   applyWinter(saved);
 })();
 </script>
 
 <style>
 /* ✨ CHATLY WINTER EFFECTS */
-
-body.winter-theme .panel {
-  animation: winterAppear .65s cubic-bezier(.2,.8,.2,1) both,
-             winterGlow 5s ease-in-out infinite alternate;
-}
-
-@keyframes winterAppear {
-  from {opacity:0;transform:translateY(18px) scale(.98)}
-  to {opacity:1;transform:translateY(0) scale(1)}
-}
-
-@keyframes winterGlow {
-  from {box-shadow:0 8px 25px #0005,0 0 8px #927aff18}
-  to {box-shadow:0 8px 30px #0006,0 0 22px #a78bfa35}
-}
-
-/* Блик на кнопках */
-body.winter-theme button {
-  position:relative;
-  overflow:hidden;
-}
-
-body.winter-theme button::after {
-  content:"";
-  position:absolute;
-  top:-50%;
-  left:-80%;
-  width:35%;
-  height:200%;
-  background:linear-gradient(
-    90deg,transparent,#ffffff55,transparent
-  );
-  transform:rotate(25deg);
-  animation:winterShine 5s ease-in-out infinite;
-  pointer-events:none;
-}
-
-@keyframes winterShine {
-  0%,65% {left:-80%}
-  100% {left:150%}
-}
-
-/* Летающие снежинки */
-.winter-flake {
-  position:fixed;
-  top:-30px;
-  z-index:2;
-  pointer-events:none;
-  color:#e5e9ff;
-  text-shadow:0 0 10px #a9baff,0 0 18px #fff;
-  animation:flakeFall linear forwards;
-}
-
-@keyframes flakeFall {
-  0% {transform:translate3d(0,-20px,0) rotate(0deg);opacity:0}
-  10% {opacity:.85}
-  90% {opacity:.8}
-  100% {transform:translate3d(35px,110vh,0) rotate(300deg);opacity:0}
-}
-
-/* Сияние логотипа */
-body.winter-theme .logo {
-  animation:logoTwinkle 3s ease-in-out infinite alternate;
-}
-
-@keyframes logoTwinkle {
-  from {text-shadow:0 0 5px #a78bfa55}
-  to {text-shadow:0 0 20px #c4aaff,0 0 35px #805bff88}
-}
-
-/* Реакция карточек на нажатие */
-body.winter-theme .panel {
-  transition:transform .25s ease,border-color .25s ease;
-}
-
-body.winter-theme .panel:active {
-  transform:scale(.992);
-}
-
-@media(prefers-reduced-motion:reduce) {
-  body.winter-theme *,
-  body.winter-theme *::before,
-  body.winter-theme *::after {
-    animation:none!important;
-    transition:none!important;
-  }
-}
+body.winter-theme .panel{animation:winterAppear .65s cubic-bezier(.2,.8,.2,1) both,winterGlow 5s ease-in-out infinite alternate}
+@keyframes winterAppear{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes winterGlow{from{box-shadow:0 8px 25px #0005,0 0 8px #927aff18}to{box-shadow:0 8px 30px #0006,0 0 22px #a78bfa35}}
+body.winter-theme button{position:relative;overflow:hidden}
+body.winter-theme button::after{content:"";position:absolute;top:-50%;left:-80%;width:35%;height:200%;background:linear-gradient(90deg,transparent,#ffffff55,transparent);transform:rotate(25deg);animation:winterShine 5s ease-in-out infinite;pointer-events:none}
+@keyframes winterShine{0%,65%{left:-80%}100%{left:150%}}
+.winter-flake{position:fixed;top:-30px;z-index:2;pointer-events:none;color:#e5e9ff;text-shadow:0 0 10px #a9baff,0 0 18px #fff;animation:flakeFall linear forwards}
+@keyframes flakeFall{0%{transform:translate3d(0,-20px,0) rotate(0deg);opacity:0}10%{opacity:.85}90%{opacity:.8}100%{transform:translate3d(35px,110vh,0) rotate(300deg);opacity:0}}
+body.winter-theme .logo{animation:logoTwinkle 3s ease-in-out infinite alternate}
+@keyframes logoTwinkle{from{text-shadow:0 0 5px #a78bfa55}to{text-shadow:0 0 20px #c4aaff,0 0 35px #805bff88}}
+body.winter-theme .panel{transition:transform .25s ease,border-color .25s ease}
+body.winter-theme .panel:active{transform:scale(.992)}
+@media(prefers-reduced-motion:reduce){body.winter-theme *,body.winter-theme *::before,body.winter-theme *::after{animation:none!important;transition:none!important}}
 </style>
 
 <script>
 (() => {
-  let snowTimer = null;
-
-  function createSnowflake() {
-    if (!document.body.classList.contains("winter-theme")) return;
-
-    const flake = document.createElement("span");
-    flake.className = "winter-flake";
-    flake.textContent = Math.random() > .5 ? "❄" : "✧";
-
-    flake.style.left = Math.random() * 100 + "vw";
-    flake.style.fontSize = (10 + Math.random() * 13) + "px";
-    flake.style.animationDuration = (7 + Math.random() * 8) + "s";
-
+  let snowTimer=null;
+  function createSnowflake(){
+    if(!document.body.classList.contains("winter-theme"))return;
+    const flake=document.createElement("span");
+    flake.className="winter-flake";flake.textContent=Math.random()>.5?"❄":"✧";
+    flake.style.left=Math.random()*100+"vw";
+    flake.style.fontSize=(10+Math.random()*13)+"px";
+    flake.style.animationDuration=(7+Math.random()*8)+"s";
     document.body.appendChild(flake);
-    flake.addEventListener("animationend", () => flake.remove());
+    flake.addEventListener("animationend",()=>flake.remove());
   }
-
-  function updateSnow() {
-    if (snowTimer) {
-      clearInterval(snowTimer);
-      snowTimer = null;
-    }
-
-    document.querySelectorAll(".winter-flake").forEach(x => x.remove());
-
-    if (document.body.classList.contains("winter-theme") &&
-        !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      snowTimer = setInterval(createSnowflake, 650);
+  function updateSnow(){
+    if(snowTimer){clearInterval(snowTimer);snowTimer=null;}
+    document.querySelectorAll(".winter-flake").forEach(x=>x.remove());
+    if(document.body.classList.contains("winter-theme")&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+      snowTimer=setInterval(createSnowflake,650);
     }
   }
-
   updateSnow();
-
-  const observer = new MutationObserver(updateSnow);
-  observer.observe(document.body, {
-  attributes:true,
-  attributeFilter:["class"]
-});
+  const observer=new MutationObserver(updateSnow);
+  observer.observe(document.body,{attributes:true,attributeFilter:["class"]});
 })();
 </script>
 <script src="./chatly-desktop-layout.js"></script>
